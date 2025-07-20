@@ -24,7 +24,237 @@ def main():
     if not os.path.exists(config.UPLOADS_DIR):
         os.makedirs(config.UPLOADS_DIR)
 
-    st.title(config.STREAMLIT_PAGE_TITLE)
+    # Apply corporate theme
+    st.set_page_config(
+        page_title=config.STREAMLIT_PAGE_TITLE,
+        page_icon=config.STREAMLIT_PAGE_ICON,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+    # Custom CSS for professional styling
+    st.markdown("""
+    <style>
+    /* Corporate color variables */
+    :root {
+        --primary-color: #1C8074;
+        --secondary-color: #666666;
+        --dark-green: #1A494C;
+        --light-green: #94AF92;
+        --very-light-green: #E6ECD8;
+        --light-gray: #C9C9C9;
+    }
+    
+    /* Main title styling */
+    .main-title {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(28, 128, 116, 0.3);
+    }
+    
+    /* Professional card styling */
+    .professional-card {
+        background: white;
+        border: 2px solid var(--very-light-green);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 4px 20px rgba(28, 128, 116, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .professional-card:hover {
+        box-shadow: 0 8px 30px rgba(28, 128, 116, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    /* Status indicators */
+    .status-success {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .status-info {
+        background-color: var(--very-light-green);
+        color: var(--dark-green);
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: var(--very-light-green);
+        border-radius: 8px 8px 0 0;
+        color: var(--dark-green);
+        font-weight: bold;
+        padding: 12px 24px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    /* Button styling - Override Streamlit defaults */
+    .stButton > button[kind="primary"] {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: white !important;
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background-color: var(--dark-green) !important;
+        border-color: var(--dark-green) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(28, 128, 116, 0.3);
+    }
+    
+    .stButton > button[kind="secondary"] {
+        background-color: var(--very-light-green) !important;
+        border-color: var(--light-green) !important;
+        color: var(--dark-green) !important;
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button[kind="secondary"]:hover {
+        background-color: var(--light-green) !important;
+        border-color: var(--primary-color) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(28, 128, 116, 0.3);
+    }
+    
+    /* Fallback for any other buttons */
+    .stButton > button {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: white !important;
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        background-color: var(--dark-green) !important;
+        border-color: var(--dark-green) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(28, 128, 116, 0.3);
+    }
+    
+    /* File upload button styling */
+    .stFileUploader > div > div > div > button {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: white !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        padding: 0.5rem 1rem !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stFileUploader > div > div > div > button:hover {
+        background-color: var(--dark-green) !important;
+        border-color: var(--dark-green) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 8px rgba(28, 128, 116, 0.3) !important;
+    }
+    
+    /* File uploader container styling */
+    .stFileUploader > div {
+        border: 2px dashed var(--primary-color) !important;
+        border-radius: 12px !important;
+        background-color: var(--very-light-green) !important;
+    }
+    
+    /* Selectbox and other form elements */
+    .stSelectbox > div > div > div > div {
+        border-color: var(--light-green) !important;
+    }
+    
+    .stSelectbox > div > div > div > div:hover {
+        border-color: var(--primary-color) !important;
+    }
+    
+    /* Remove any red backgrounds from file items */
+    .stFileUploader > div > div > div > div > div[data-testid="stFileUploaderFile"] {
+        background-color: var(--very-light-green) !important;
+        border-color: var(--light-green) !important;
+    }
+    
+    /* Override any red elements */
+    [style*="background-color: rgb(220, 53, 69)"], 
+    [style*="background-color: #dc3545"],
+    [style*="background-color: red"] {
+        background-color: var(--primary-color) !important;
+    }
+    
+    /* Metric styling */
+    .metric-container {
+        background-color: var(--very-light-green);
+        border: 2px solid var(--light-green);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        margin: 0.5rem 0;
+    }
+    
+    /* File upload styling */
+    .stFileUploader {
+        border: 2px dashed var(--primary-color);
+        border-radius: 12px;
+        padding: 2rem;
+        background: var(--very-light-green);
+    }
+    
+    /* Chat styling */
+    .chat-message {
+        background: white;
+        border: 1px solid var(--very-light-green);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .chat-message.user {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .chat-message.assistant {
+        background: var(--very-light-green);
+        color: var(--dark-green);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Professional header
+    st.markdown("""
+    <div class="main-title">
+        <h1>🤖 OkuoAgent</h1>
+        <p style="font-size: 1.2rem; margin: 0;">Análisis Inteligente de Datos</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Initialize session state for session management
     if 'user_session_id' not in st.session_state:
@@ -39,10 +269,15 @@ def main():
         st.warning(f"Data dictionary file not found at {config.DATA_DICTIONARY_PATH}. Creating empty dictionary.")
         data_dictionary = {}
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Data Management", "Database Connection", "Chat Interface", "Debug"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📁 Gestión de Datos", "🗄️ Conexión a Base de Datos", "💬 Chat Inteligente", "🔧 Depuración"])
 
     with tab1:
-        st.header("📁 Data Management")
+        st.markdown("""
+        <div class="professional-card">
+            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">📁 Gestión de Datos</h2>
+            <p style="color: var(--dark-green); font-size: 1.1rem;">Sube tus archivos de datos o selecciona tablas de la base de datos para comenzar el análisis.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Show current selected data
         has_selected_data = False
@@ -64,10 +299,10 @@ def main():
                             continue
                         
                         selected_data_info.append({
-                            "Source": "File",
-                            "Name": file,
-                            "Rows": len(df),
-                            "Columns": len(df.columns)
+                            "Fuente": "Archivo",
+                            "Nombre": file,
+                            "Filas": len(df),
+                            "Columnas": len(df.columns)
                         })
                     except:
                         continue
@@ -80,47 +315,54 @@ def main():
                     if 'database_data' in st.session_state and "custom_query" in st.session_state['database_data']:
                         df = st.session_state['database_data']['custom_query']
                         selected_data_info.append({
-                            "Source": "Custom Query",
-                            "Name": "Query Results",
-                            "Rows": len(df),
-                            "Columns": len(df.columns)
+                            "Fuente": "Consulta SQL",
+                            "Nombre": "Resultados de Consulta",
+                            "Filas": len(df),
+                            "Columnas": len(df.columns)
                         })
                 else:
                     if 'database_data' in st.session_state and table in st.session_state['database_data']:
                         df = st.session_state['database_data'][table]
                         selected_data_info.append({
-                            "Source": "Database",
-                            "Name": table,
-                            "Rows": len(df),
-                            "Columns": len(df.columns)
+                            "Fuente": "Base de Datos",
+                            "Nombre": table,
+                            "Filas": len(df),
+                            "Columnas": len(df.columns)
                         })
         
         if has_selected_data:
-            st.subheader("🎯 Currently Selected Data")
+            st.markdown("""
+            <div class="status-success">
+                <h3>🎯 Datos Seleccionados para Análisis</h3>
+            </div>
+            """, unsafe_allow_html=True)
             
             if selected_data_info:
                 selected_df = pd.DataFrame(selected_data_info)
                 st.dataframe(selected_df, use_container_width=True)
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("📈 Go to Analysis", type="primary"):
-                        st.switch_page("streamlit_apps/pages/python_visualisation_agent.py")
-                with col2:
-                    if st.button("🗑️ Clear All Data"):
-                        if 'selected_files' in st.session_state:
-                            del st.session_state['selected_files']
-                        if 'database_data' in st.session_state:
-                            del st.session_state['database_data']
-                        st.rerun()
+                if st.button("🗑️ Limpiar Todos los Datos", type="secondary", use_container_width=True):
+                    if 'selected_files' in st.session_state:
+                        del st.session_state['selected_files']
+                    if 'database_data' in st.session_state:
+                        del st.session_state['database_data']
+                    st.rerun()
             
             st.divider()
         
         # File upload section
+        st.markdown("""
+        <div class="professional-card">
+            <h3 style="color: var(--primary-color);">📤 Subir Archivos</h3>
+            <p style="color: var(--dark-green);">Selecciona archivos CSV o JSON para analizar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         uploaded_files = st.file_uploader(
-            f"Upload files ({', '.join(config.ALLOWED_FILE_TYPES)})", 
+            f"Subir archivos ({', '.join(config.ALLOWED_FILE_TYPES)})", 
             type=config.ALLOWED_FILE_TYPES, 
-            accept_multiple_files=True
+            accept_multiple_files=True,
+            help="Arrastra y suelta tus archivos aquí o haz clic para seleccionar"
         )
 
         if uploaded_files:
@@ -241,7 +483,12 @@ def main():
             st.info("No CSV files available. Please upload some files first.")
 
     with tab2:
-        st.header("🗄️ Database Connection")
+        st.markdown("""
+        <div class="professional-card">
+            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">🗄️ Conexión a Base de Datos</h2>
+            <p style="color: var(--dark-green); font-size: 1.1rem;">Conecta con tu base de datos y selecciona las tablas que deseas analizar.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Import database service
         try:
@@ -249,27 +496,37 @@ def main():
             db_available = True
         except ImportError:
             logger.warning("Database service not available. Please install required dependencies.")
-            st.warning("⚠️ Database functionality not available. Please install required dependencies.")
+            st.markdown("""
+            <div class="status-info">
+                <h3>⚠️ Funcionalidad de Base de Datos No Disponible</h3>
+                <p>Por favor, instala las dependencias requeridas para acceder a la base de datos.</p>
+            </div>
+            """, unsafe_allow_html=True)
             db_available = False
             db_service = None
         
         if db_available:
             # Simplified interface for non-technical users
-            st.markdown("### 📊 Selecciona una tabla para analizar")
+            st.markdown("""
+            <div class="professional-card">
+                <h3 style="color: var(--primary-color);">📊 Selecciona una Tabla para Analizar</h3>
+                <p style="color: var(--dark-green);">Elige una tabla de tu base de datos para comenzar el análisis inteligente.</p>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Auto-load tables on page load
             if 'tables_loaded' not in st.session_state:
                 st.session_state['tables_loaded'] = False
             
-            if not st.session_state['tables_loaded'] or st.button("🔄 Actualizar tablas", type="secondary"):
-                with st.spinner("Cargando tablas disponibles..."):
+            if not st.session_state['tables_loaded'] or st.button("🔄 Actualizar Tablas", type="secondary", use_container_width=True):
+                with st.spinner("🔄 Conectando y cargando tablas disponibles..."):
                     # Test connection first
                     if db_service.test_connection():
                         tables = db_service.get_tables()
                         st.session_state['available_tables'] = tables
                         st.session_state['tables_loaded'] = True
                         if tables:
-                            st.success(f"✅ Se encontraron {len(tables)} tablas")
+                            st.success(f"✅ Conexión exitosa - {len(tables)} tablas encontradas")
                         else:
                             st.warning("⚠️ No se encontraron tablas en la base de datos")
                     else:
@@ -280,7 +537,7 @@ def main():
             # Table selection
             tables = st.session_state.get('available_tables', [])
             if tables:
-                st.info(f"📋 **{len(tables)} tablas disponibles**")
+                st.info(f"📋 {len(tables)} tablas disponibles")
                 
                 selected_table = st.selectbox(
                     "🗂️ Selecciona una tabla:", 
@@ -299,49 +556,56 @@ def main():
                             selected_table in st.session_state['selected_database_tables']
                         )
                         
-                        # Show table summary with status indicator
+                        # Show simple status indicator
                         if is_table_loaded:
-                            st.success(f"✅ **Tabla '{selected_table}' lista para análisis**")
+                            st.success(f"✅ Tabla '{selected_table}' lista para análisis")
                         else:
-                            st.info(f"📋 **Tabla seleccionada: {selected_table}**")
+                            st.info(f"📋 Tabla seleccionada: {selected_table}")
                         
+                        # Simple metrics
                         col1, col2 = st.columns(2)
                         with col1:
-                            st.metric("📊 Filas", table_info.get("row_count", 0))
+                            st.metric("📊 Filas", f"{table_info.get("row_count", 0):,}")
                         with col2:
                             st.metric("📝 Columnas", len(table_info.get("columns", [])))
                         
                         # Show different button based on status
                         if is_table_loaded:
-                            st.success("🎯 **¡Esta tabla está lista para análisis!**")
-                            if st.button("🔄 Recargar tabla", type="secondary", use_container_width=True):
-                                with st.spinner(f"Recargando tabla '{selected_table}'..."):
+                            if st.button("🔄 Recargar Tabla", type="secondary", use_container_width=True):
+                                with st.spinner(f"🔄 Recargando tabla '{selected_table}'..."):
                                     df = db_service.load_table_as_dataframe(selected_table)
                                     if df is not None:
                                         st.session_state['selected_database_tables'] = [selected_table]
                                         st.session_state['database_data'] = {selected_table: df}
-                                        st.success(f"✅ ¡Tabla '{selected_table}' recargada exitosamente!")
+                                        st.success(f"✅ Tabla '{selected_table}' recargada")
                                         st.rerun()
                                     else:
                                         logger.warning(f"Failed to reload table: {selected_table}")
                                         st.error("❌ No se pudo recargar la tabla")
                         else:
                             # Load table for analysis button
-                            if st.button("🎯 Analizar esta tabla", type="primary", use_container_width=True):
-                                with st.spinner(f"Cargando tabla '{selected_table}' para análisis..."):
+                            if st.button("🎯 Analizar esta Tabla", type="primary", use_container_width=True):
+                                with st.spinner(f"🔄 Cargando tabla '{selected_table}' para análisis..."):
                                     df = db_service.load_table_as_dataframe(selected_table)
                                     if df is not None:
                                         st.session_state['selected_database_tables'] = [selected_table]
                                         st.session_state['database_data'] = {selected_table: df}
-                                        st.success(f"✅ ¡Tabla '{selected_table}' cargada para análisis!")
+                                        st.success(f"✅ Tabla '{selected_table}' cargada para análisis")
                                         st.rerun()
                                     else:
                                         logger.warning(f"Failed to load table for analysis: {selected_table}")
                                         st.error("❌ No se pudo cargar la tabla para análisis")
             else:
-                st.info("No hay tablas disponibles. Verifica la conexión a la base de datos.")
+                st.info("📋 No hay tablas disponibles. Verifica la conexión a la base de datos.")
 
     with tab3:
+        st.markdown("""
+        <div class="professional-card">
+            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">💬 Chat Inteligente</h2>
+            <p style="color: var(--dark-green); font-size: 1.1rem;">Interactúa con tu agente de IA para analizar datos, crear visualizaciones y obtener insights.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         def on_submit_user_query():
             try:
                 user_query = st.session_state['user_input']
@@ -443,30 +707,55 @@ def main():
                                     # Log error but don't show to user
                                     logger.warning(f"Error loading image {image_path}: {str(e)}")
                                     continue
-            # Chat input
-            st.chat_input(placeholder="Ask me anything about your data", on_submit=on_submit_user_query, key='user_input')
+            st.chat_input(
+                placeholder="Pregúntame cualquier cosa sobre tus datos...", 
+                on_submit=on_submit_user_query, 
+                key='user_input'
+            )
         else:
-            st.info("Please select files to analyze in the Data Management tab first.")
+            st.markdown("""
+            <div class="status-info">
+                <h3>📋 Sin Datos Seleccionados</h3>
+                <p>Por favor, selecciona archivos o tablas de base de datos en la pestaña "Gestión de Datos" para comenzar el análisis.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
     with tab4:
+        st.markdown("""
+        <div class="professional-card">
+            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">🔧 Depuración</h2>
+            <p style="color: var(--dark-green); font-size: 1.1rem;">Información técnica para desarrolladores y debugging.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         if 'visualisation_chatbot' in st.session_state:
-            st.subheader("Intermediate Outputs")
+            st.markdown("""
+            <div class="professional-card">
+                <h3 style="color: var(--primary-color);">📊 Salidas Intermedias</h3>
+            </div>
+            """, unsafe_allow_html=True)
+            
             for i, output in enumerate(st.session_state.visualisation_chatbot.intermediate_outputs):
-                with st.expander(f"Step {i+1}"):
+                with st.expander(f"Paso {i+1}", expanded=False):
                     if 'thought' in output:
-                        st.markdown("### Thought Process")
+                        st.markdown("### 💭 Proceso de Pensamiento")
                         st.markdown(output['thought'])
                     if 'code' in output:
-                        st.markdown("### Code")
+                        st.markdown("### 💻 Código")
                         st.code(output['code'], language="python")
                     if 'output' in output:
-                        st.markdown("### Output")
+                        st.markdown("### 📤 Salida")
                         st.text(output['output'])
                     else:
-                        st.markdown("### Output")
+                        st.markdown("### 📤 Salida")
                         st.text(output)
         else:
-            st.info("No debug information available yet. Start a conversation to see intermediate outputs.")
+            st.markdown("""
+            <div class="status-info">
+                <h3>📋 Sin Información de Depuración</h3>
+                <p>Inicia una conversación para ver las salidas intermedias del sistema.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

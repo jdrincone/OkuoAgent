@@ -15,8 +15,8 @@ class Config:
     
     # Streamlit Configuration
     STREAMLIT_SERVER_MAX_UPLOAD_SIZE: str = os.getenv("STREAMLIT_SERVER_MAX_UPLOAD_SIZE", "2000")
-    STREAMLIT_PAGE_TITLE: str = os.getenv("STREAMLIT_PAGE_TITLE", "Data Analysis Dashboard")
-    STREAMLIT_PAGE_ICON: str = os.getenv("STREAMLIT_PAGE_ICON", "📊")
+    STREAMLIT_PAGE_TITLE: str = os.getenv("STREAMLIT_PAGE_TITLE", "OkuoAgent - Análisis Inteligente de Datos")
+    STREAMLIT_PAGE_ICON: str = os.getenv("STREAMLIT_PAGE_ICON", "🤖")
     
     # Application Configuration
     UPLOADS_DIR: str = os.getenv("UPLOADS_DIR", "uploads")
@@ -51,10 +51,10 @@ class Config:
     
     # Streamlit Theme Configuration
     STREAMLIT_THEME: dict = {
-        "primaryColor": "#1C8074",  # PANTONE 3295 U
-        "backgroundColor": "#FFFFFF",
-        "secondaryBackgroundColor": "#F0F2F6",
-        "textColor": "#262730",
+        "primaryColor": "#1C8074",  # PANTONE 3295 U - Verde principal
+        "backgroundColor": "#FFFFFF",  # Fondo blanco
+        "secondaryBackgroundColor": "#E6ECD8",  # PANTONE 152-2 U - Verde claro
+        "textColor": "#1A494C",  # PANTONE 175-16 U - Verde oscuro
         "font": "sans serif"
     }
     
