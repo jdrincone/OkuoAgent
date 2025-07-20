@@ -1,0 +1,39 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Data files
+*.csv
+*.json
+uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter
+*.ipynb_checkpoints/
+
+# Conda
+.conda/
+
+# Images and plots
+*.pkl
+*.png
+*.pdf
+*.pickle
+images/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+
+
