@@ -36,17 +36,13 @@ def main():
     # Check authentication
     check_login()
 
-    data_visualisation_page = st.Page(
-        "./streamlit_apps/pages/python_visualisation_agent.py", title="Data Visualisation", icon="📈"
-    )
-
-    pg = st.navigation(
-        {
-            "Visualisation Agent": [data_visualisation_page]
-        }
-    )
-
-    pg.run()
+    # Import and run the visualization agent directly
+    try:
+        from streamlit_apps.pages.python_visualisation_agent import main as viz_main
+        viz_main()
+    except Exception as e:
+        st.error(f"Error loading visualization agent: {str(e)}")
+        logger.error(f"Error loading visualization agent: {str(e)}")
 
 if __name__ == "__main__":
     main()
