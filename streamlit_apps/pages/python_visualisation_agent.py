@@ -254,231 +254,92 @@ def main():
             db_service = None
         
         if db_available:
-            # Database connection section
-            col1, col2 = st.columns([1, 1])
+            # Simplified interface for non-technical users
+            st.markdown("### 📊 Selecciona una tabla para analizar")
             
-            with col1:
-                st.subheader("🔗 Connection Status")
-                
-                # Test connection button
-                if st.button("Test Database Connection", type="primary"):
-                    with st.spinner("Testing connection..."):
-                        if db_service.test_connection():
-                            st.success("✅ Database connection successful!")
-                        else:
-                            st.error("❌ Database connection failed!")
-                
-                # Show connection info
-                if db_service.is_connected:
-                    st.info(f"**Connected to:** {config.DATABASE_TYPE} database")
-                    st.info(f"**Host:** {config.DATABASE_HOST}:{config.DATABASE_PORT}")
-                    st.info(f"**Database:** {config.DATABASE_NAME}")
-                else:
-                    st.warning("Not connected to database")
-            
-            with col2:
-                st.subheader("📊 Database Info")
-                
-                if st.button("Get Database Information"):
-                    with st.spinner("Loading database information..."):
-                        db_info = db_service.get_database_info()
-                        if db_info:
-                            st.json(db_info)
-                        else:
-                            logger.warning("Failed to get database information")
-                            st.warning("⚠️ Could not retrieve database information")
-            
-            # Tables section
-            st.subheader("📋 Available Tables")
-            
-            # Auto-refresh tables on page load
+            # Auto-load tables on page load
             if 'tables_loaded' not in st.session_state:
                 st.session_state['tables_loaded'] = False
             
-            if not st.session_state['tables_loaded'] or st.button("🔄 Refresh Tables"):
-                with st.spinner("Loading tables..."):
-                    tables = db_service.get_tables()
-                    st.session_state['available_tables'] = tables
-                    st.session_state['tables_loaded'] = True
-                    if tables:
-                        st.success(f"✅ Found {len(tables)} tables")
+            if not st.session_state['tables_loaded'] or st.button("🔄 Actualizar tablas", type="secondary"):
+                with st.spinner("Cargando tablas disponibles..."):
+                    # Test connection first
+                    if db_service.test_connection():
+                        tables = db_service.get_tables()
+                        st.session_state['available_tables'] = tables
+                        st.session_state['tables_loaded'] = True
+                        if tables:
+                            st.success(f"✅ Se encontraron {len(tables)} tablas")
+                        else:
+                            st.warning("⚠️ No se encontraron tablas en la base de datos")
                     else:
-                        st.warning("⚠️ No tables found or connection failed")
+                        st.error("❌ No se pudo conectar a la base de datos")
+                        st.session_state['available_tables'] = []
+                        st.session_state['tables_loaded'] = True
             
-            # Table selection and preview
+            # Table selection
             tables = st.session_state.get('available_tables', [])
             if tables:
-                st.info(f"📊 **{len(tables)} tables available**")
+                st.info(f"📋 **{len(tables)} tablas disponibles**")
+                
                 selected_table = st.selectbox(
-                    "🗂️ Select a table to preview:", 
+                    "🗂️ Selecciona una tabla:", 
                     tables,
-                    help="Choose a table from your database to analyze"
+                    help="Elige una tabla de tu base de datos para analizar"
                 )
                 
                 if selected_table:
-                    # Get table info
+                    # Get basic table info
                     table_info = db_service.get_table_info(selected_table)
                     
                     if table_info:
-                        col1, col2, col3 = st.columns(3)
+                        # Check if this table is already loaded for analysis
+                        is_table_loaded = (
+                            'selected_database_tables' in st.session_state and 
+                            selected_table in st.session_state['selected_database_tables']
+                        )
+                        
+                        # Show table summary with status indicator
+                        if is_table_loaded:
+                            st.success(f"✅ **Tabla '{selected_table}' lista para análisis**")
+                        else:
+                            st.info(f"📋 **Tabla seleccionada: {selected_table}**")
+                        
+                        col1, col2 = st.columns(2)
                         with col1:
-                            st.metric("Rows", table_info.get("row_count", 0))
+                            st.metric("📊 Filas", table_info.get("row_count", 0))
                         with col2:
-                            st.metric("Columns", len(table_info.get("columns", [])))
-                        with col3:
-                            st.metric("Table", selected_table)
+                            st.metric("📝 Columnas", len(table_info.get("columns", [])))
                         
-                        # Show columns
-                        st.subheader("📝 Columns")
-                        columns_df = pd.DataFrame([
-                            {"Column": col, "Type": table_info.get("column_types", {}).get(col, "Unknown")}
-                            for col in table_info.get("columns", [])
-                        ])
-                        st.dataframe(columns_df, use_container_width=True)
-                        
-                        # Preview data
-                        st.subheader("👀 Data Preview")
-                        preview_limit = st.slider("Preview rows:", 10, 1000, 100, 10)
-                        
-                        col1, col2 = st.columns([1, 1])
-                        
-                        with col1:
-                            if st.button("📊 Load Preview", type="primary"):
-                                with st.spinner(f"Loading {preview_limit} rows..."):
-                                    df = db_service.load_table_as_dataframe(selected_table, limit=preview_limit)
-                                    if df is not None:
-                                        st.session_state['preview_data'] = df
-                                        st.session_state['preview_table'] = selected_table
-                                        st.success(f"✅ Preview loaded!")
-                                        st.rerun()
-                                    else:
-                                        logger.warning(f"Failed to load table data for {selected_table}")
-                                        st.warning("⚠️ Could not load table data")
-                        
-                        with col2:
-                            if st.button("🎯 Use for Analysis", type="secondary"):
-                                with st.spinner(f"Loading full table for analysis..."):
+                        # Show different button based on status
+                        if is_table_loaded:
+                            st.success("🎯 **¡Esta tabla está lista para análisis!**")
+                            if st.button("🔄 Recargar tabla", type="secondary", use_container_width=True):
+                                with st.spinner(f"Recargando tabla '{selected_table}'..."):
                                     df = db_service.load_table_as_dataframe(selected_table)
                                     if df is not None:
                                         st.session_state['selected_database_tables'] = [selected_table]
                                         st.session_state['database_data'] = {selected_table: df}
-                                        st.success(f"✅ Table '{selected_table}' loaded for analysis!")
+                                        st.success(f"✅ ¡Tabla '{selected_table}' recargada exitosamente!")
+                                        st.rerun()
+                                    else:
+                                        logger.warning(f"Failed to reload table: {selected_table}")
+                                        st.error("❌ No se pudo recargar la tabla")
+                        else:
+                            # Load table for analysis button
+                            if st.button("🎯 Analizar esta tabla", type="primary", use_container_width=True):
+                                with st.spinner(f"Cargando tabla '{selected_table}' para análisis..."):
+                                    df = db_service.load_table_as_dataframe(selected_table)
+                                    if df is not None:
+                                        st.session_state['selected_database_tables'] = [selected_table]
+                                        st.session_state['database_data'] = {selected_table: df}
+                                        st.success(f"✅ ¡Tabla '{selected_table}' cargada para análisis!")
                                         st.rerun()
                                     else:
                                         logger.warning(f"Failed to load table for analysis: {selected_table}")
-                                        st.warning("⚠️ Could not load table for analysis")
-                        
-                        # Show preview if available
-                        if 'preview_data' in st.session_state and st.session_state.get('preview_table') == selected_table:
-                            st.subheader(f"📋 Preview of '{selected_table}' ({len(st.session_state['preview_data'])} rows)")
-                            st.dataframe(st.session_state['preview_data'], use_container_width=True)
-                            
-                            # Quick action buttons
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                if st.button("📈 Use for Analysis", key="use_preview_analysis"):
-                                    st.session_state['selected_database_tables'] = [selected_table]
-                                    st.session_state['database_data'] = {selected_table: st.session_state['preview_data']}
-                                    st.success(f"✅ Table '{selected_table}' loaded for analysis!")
-                                    st.rerun()
-                            
-                            with col2:
-                                if st.button("🔄 Load More Rows", key="load_more_preview"):
-                                    new_limit = min(preview_limit * 2, 10000)
-                                    with st.spinner(f"Loading {new_limit} rows..."):
-                                        df = db_service.load_table_as_dataframe(selected_table, limit=new_limit)
-                                        if df is not None:
-                                            st.session_state['preview_data'] = df
-                                            st.rerun()
-                            
-                            with col3:
-                                if st.button("🗑️ Clear Preview", key="clear_preview"):
-                                    if 'preview_data' in st.session_state:
-                                        del st.session_state['preview_data']
-                                    if 'preview_table' in st.session_state:
-                                        del st.session_state['preview_table']
-                                    st.rerun()
+                                        st.error("❌ No se pudo cargar la tabla para análisis")
             else:
-                st.info("No tables available. Please check your database connection.")
-            
-            # Custom query section
-            st.subheader("🔍 Custom SQL Query")
-            
-            # Query templates
-            query_templates = {
-                "Select all": "SELECT * FROM table_name LIMIT 100",
-                "Count rows": "SELECT COUNT(*) as total_rows FROM table_name",
-                "Sample data": "SELECT * FROM table_name ORDER BY RANDOM() LIMIT 50",
-                "Column info": "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'table_name'"
-            }
-            
-            selected_template = st.selectbox("📝 Query Template:", ["Custom Query"] + list(query_templates.keys()))
-            
-            if selected_template != "Custom Query":
-                custom_query = st.text_area(
-                    "SQL Query:", 
-                    value=query_templates[selected_template],
-                    height=100,
-                    help="Modify the template query as needed"
-                )
-            else:
-                custom_query = st.text_area(
-                    "SQL Query:", 
-                    height=100,
-                    placeholder="SELECT * FROM your_table LIMIT 100",
-                    help="Enter your custom SQL query"
-                )
-            
-            col1, col2 = st.columns([1, 1])
-            
-            with col1:
-                if st.button("🚀 Execute Query", type="primary"):
-                    if custom_query.strip():
-                        with st.spinner("Executing query..."):
-                            df = db_service.execute_query(custom_query)
-                            if df is not None:
-                                st.session_state['query_results'] = df
-                                st.session_state['last_query'] = custom_query
-                                st.success(f"✅ Query executed successfully! {len(df)} rows returned.")
-                                st.rerun()
-                            else:
-                                logger.warning("Query execution failed")
-                                st.warning("⚠️ Query execution failed")
-                    else:
-                        st.warning("⚠️ Please enter a SQL query")
-            
-            with col2:
-                if st.button("📊 Use Results for Analysis", type="secondary"):
-                    if 'query_results' in st.session_state:
-                        st.session_state['selected_database_tables'] = ["custom_query_results"]
-                        st.session_state['database_data'] = {"custom_query": st.session_state['query_results']}
-                        st.success("✅ Query results loaded for analysis!")
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ No query results available. Execute a query first.")
-            
-            # Show query results if available
-            if 'query_results' in st.session_state:
-                st.subheader(f"📋 Query Results ({len(st.session_state['query_results'])} rows)")
-                st.code(f"Last query: {st.session_state.get('last_query', '')}")
-                st.dataframe(st.session_state['query_results'], use_container_width=True)
-                
-                # Quick actions for query results
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("📈 Use for Analysis", key="use_query_analysis"):
-                        st.session_state['selected_database_tables'] = ["custom_query_results"]
-                        st.session_state['database_data'] = {"custom_query": st.session_state['query_results']}
-                        st.success("✅ Query results loaded for analysis!")
-                        st.rerun()
-                
-                with col2:
-                    if st.button("🗑️ Clear Results", key="clear_query_results"):
-                        if 'query_results' in st.session_state:
-                            del st.session_state['query_results']
-                        if 'last_query' in st.session_state:
-                            del st.session_state['last_query']
-                        st.rerun()
+                st.info("No hay tablas disponibles. Verifica la conexión a la base de datos.")
 
     with tab3:
         def on_submit_user_query():
