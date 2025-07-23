@@ -1,0 +1,195 @@
+tabla: produccion_aliar
+descripcion: >
+  Registros de órdenes de producción de la planta FAZENDA, incluyendo insumos, rendimientos,
+  condiciones de operación y métricas de calidad.
+
+columnas:
+  - nombre: id_registro
+    tipo: BIGINT
+    descripcion: Identificador único del registro.
+
+  - nombre: orden_produccion
+    tipo: BIGINT
+    descripcion: Código de la orden de producción.
+
+  - nombre: fecha_produccion
+    tipo: DATE
+    descripcion: Fecha exacta de producción.
+
+  - nombre: mes_produccion
+    tipo: INT
+    descripcion: Mes numérico en que se ejecutó la producción.
+
+  - nombre: planta
+    tipo: TEXT
+    descripcion: Nombre de la planta de producción (ej. FAZENDA).
+
+  - nombre: referencia_producto
+    tipo: BIGINT
+    descripcion: Código de referencia del producto fabricado.
+
+  - nombre: nombre_producto
+    tipo: TEXT
+    descripcion: Nombre comercial del producto.
+
+  - nombre: toneladas_a_producir
+    tipo: DOUBLE
+    descripcion: Cantidad planeada de toneladas a producir.
+
+  - nombre: toneladas_materia_prima_consumida
+    tipo: DOUBLE
+    descripcion: Toneladas de materia prima efectivamente consumidas.
+
+  - nombre: toneladas_anuladas
+    tipo: DOUBLE
+    descripcion: Toneladas de producto anuladas o descartadas.
+
+  - nombre: toneladas_producidas
+    tipo: DOUBLE
+    descripcion: Toneladas efectivamente producidas.
+
+  - nombre: tiene_adiflow
+    tipo: BOOLEAN
+    descripcion: Indica si se utilizó aditivo Adiflow (True o False).
+
+  - nombre: peso_agua_kg
+    tipo: DOUBLE
+    descripcion: Peso del agua dosificada en kilogramos.
+
+  - nombre: order_produccion_despachada
+    tipo: TEXT
+    descripcion: Código de la orden asociada al despacho del producto.
+
+  - nombre: control_aceite_postengrase_pct
+    tipo: DOUBLE
+    descripcion: Porcentaje de aceite aplicado en postengrase.
+
+  - nombre: control_presion_distribuidor_psi
+    tipo: DOUBLE
+    descripcion: Presión del distribuidor durante la producción (psi).
+
+  - nombre: control_carga_alimentador_pct
+    tipo: DOUBLE
+    descripcion: Porcentaje de carga del alimentador.
+
+  - nombre: control_presion_acondicionador_psi
+    tipo: DOUBLE
+    descripcion: Presión del acondicionador (psi).
+
+  - nombre: durabilidad_pct_qa_agroindustrial
+    tipo: DOUBLE
+    descripcion: Porcentaje de durabilidad medido por QA agroindustrial.
+
+  - nombre: dureza_qa_agroindustrial
+    tipo: DOUBLE
+    descripcion: Dureza física del pellet medida por QA agroindustrial.
+
+  - nombre: finos_pct_qa_agroindustrial
+    tipo: DOUBLE
+    descripcion: Porcentaje de finos medido por QA agroindustrial.
+
+  - nombre: durabilidad_pct_produccion
+    tipo: DOUBLE
+    descripcion: Porcentaje de durabilidad reportado por el equipo de producción.
+
+  - nombre: dureza_produccion
+    tipo: DOUBLE
+    descripcion: Dureza reportada por el área de producción.
+
+  - nombre: finos_pct_produccion
+    tipo: DOUBLE
+    descripcion: Porcentaje de finos generado según producción.
+
+  - nombre: toneladas_perdidas_plan_vs_real
+    tipo: DOUBLE
+    descripcion: >
+      Diferencia entre toneladas planeadas y la suma de toneladas producidas y anuladas.
+      Valores negativos indican sobreproducción.
+
+  - nombre: porcentaje_merma_sobre_produccion_total
+    tipo: DOUBLE
+    descripcion: >
+      Proporción de toneladas perdidas respecto a la producción total. Se expresa como porcentaje
+      y permite cuantificar eficiencia en la ejecución.
+
+# Métricas calculadas y KPIs importantes
+metricas_calculadas:
+  - nombre: eficiencia_produccion
+    formula: "toneladas_producidas / toneladas_a_producir * 100"
+    descripcion: "Porcentaje de eficiencia en la producción vs lo planeado"
+    
+  - nombre: merma_total
+    formula: "toneladas_anuladas + toneladas_perdidas_plan_vs_real"
+    descripcion: "Total de pérdidas incluyendo anulaciones y diferencias plan vs real"
+    
+  - nombre: rendimiento_materia_prima
+    formula: "toneladas_producidas / toneladas_materia_prima_consumida"
+    descripcion: "Rendimiento de materia prima a producto final"
+
+# Relaciones de negocio importantes
+relaciones_negocio:
+  - concepto: "Control de Calidad"
+    descripcion: >
+      Las métricas de QA agroindustrial (durabilidad_pct_qa_agroindustrial, dureza_qa_agroindustrial, 
+      finos_pct_qa_agroindustrial) son las medidas oficiales de calidad, mientras que las de producción 
+      son reportes internos del proceso.
+    
+  - concepto: "Aditivo Adiflow"
+    descripcion: >
+      El aditivo Adiflow es un componente importante que puede afectar la calidad del producto. 
+      Su uso debe correlacionarse con las métricas de calidad.
+    
+  - concepto: "Controles de Proceso"
+    descripcion: >
+      Los controles de presión (distribuidor, acondicionador), carga del alimentador y aceite 
+      postengrase son parámetros críticos que afectan la calidad y eficiencia del proceso.
+
+# Rangos esperados para validación
+rangos_esperados:
+  control_aceite_postengrase_pct:
+    min: 0.0
+    max: 5.0
+    unidad: "%"
+    
+  control_presion_distribuidor_psi:
+    min: 0.0
+    max: 200.0
+    unidad: "psi"
+    
+  control_carga_alimentador_pct:
+    min: 0.0
+    max: 100.0
+    unidad: "%"
+    
+  durabilidad_pct_qa_agroindustrial:
+    min: 0.0
+    max: 100.0
+    unidad: "%"
+    
+  dureza_qa_agroindustrial:
+    min: 0.0
+    max: 100.0
+    unidad: "kg/cm²"
+    
+  finos_pct_qa_agroindustrial:
+    min: 0.0
+    max: 100.0
+    unidad: "%"
+
+# Análisis recomendados
+analisis_recomendados:
+  - tipo: "Tendencia temporal"
+    descripcion: "Análisis de eficiencia y calidad a lo largo del tiempo"
+    columnas: ["fecha_produccion", "eficiencia_produccion", "durabilidad_pct_qa_agroindustrial"]
+    
+  - tipo: "Correlación de calidad"
+    descripcion: "Relación entre parámetros de control y métricas de calidad"
+    columnas: ["control_presion_distribuidor_psi", "durabilidad_pct_qa_agroindustrial", "dureza_qa_agroindustrial"]
+    
+  - tipo: "Impacto del Adiflow"
+    descripcion: "Análisis del efecto del aditivo Adiflow en la calidad"
+    columnas: ["tiene_adiflow", "durabilidad_pct_qa_agroindustrial", "finos_pct_qa_agroindustrial"]
+    
+  - tipo: "Eficiencia por producto"
+    descripcion: "Comparación de eficiencia entre diferentes productos"
+    columnas: ["nombre_producto", "eficiencia_produccion", "merma_total"] 

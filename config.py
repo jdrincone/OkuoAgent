@@ -19,6 +19,7 @@ class Config:
     STREAMLIT_PAGE_ICON: str = os.getenv("STREAMLIT_PAGE_ICON", "🤖")
     
     # Application Configuration
+    PROJECT_ROOT: str = os.path.dirname(os.path.abspath(__file__))
     UPLOADS_DIR: str = os.getenv("UPLOADS_DIR", "uploads")
     IMAGES_DIR: str = os.getenv("IMAGES_DIR", "images/plotly_figures/pickle")
     DATA_DICTIONARY_PATH: str = os.getenv("DATA_DICTIONARY_PATH", "uploads/data_dictionary.json")
