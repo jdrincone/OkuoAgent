@@ -57,7 +57,7 @@ columns:
     business_meaning: "Producción real"
   
   - name: "tiene_adiflow"
-    description: "Indica si se utilizó aditivo Adiflow (True/False)"
+    description: "Indica si se utilizó aditivo Adiflow (Con Adiflow/Sin Adiflow)"
     type: "boolean"
     business_meaning: "Uso de aditivo para calidad"
   
