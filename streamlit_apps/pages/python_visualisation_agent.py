@@ -221,12 +221,12 @@ def main():
     if 'selected_database_tables' not in st.session_state:
         st.session_state['selected_database_tables'] = []
 
-    tab1, tab2 = st.tabs(["💬 Chat Inteligente", "🔧 Depuración"])
+    tab1, tab2 = st.tabs(["💬 Dashboard Inteligente", "🔧 Depuración"])
 
     with tab1:
         st.markdown("""
         <div class="professional-card">
-            <h2 style="color: var(--primary-color); margin-bottom: 1rem;">💬 Chat Inteligente</h2>
+            <h3 style="color: var(--primary-color); margin-bottom: 1rem;">💬 Dashboard Inteligente</h3>
             <p style="color: var(--dark-green); font-size: 1.1rem;">Interactúa con tu agente de IA para analizar datos de producción, crear visualizaciones y obtener insights.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -261,7 +261,7 @@ def main():
                             st.session_state['selected_database_tables'] = ["produccion_aliar"]
                             st.session_state['database_data'] = {"produccion_aliar": df}
                             st.session_state['produccion_aliar_loaded'] = True
-                            st.success(f"✅ Datos de producción cargados - {len(df)} registros")
+                            st.success(f"✅ Datos correctamente cargados ")
                         else:
                             st.error("❌ No se pudo cargar la tabla 'produccion_aliar'")
                             st.session_state['produccion_aliar_loaded'] = True
@@ -276,15 +276,18 @@ def main():
             )
             
             if has_data_for_analysis:
-                # Show data info
+                # Show simplified data status
                 df = st.session_state['database_data']['produccion_aliar']
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("📊 Registros", f"{len(df):,}")
-                with col2:
-                    st.metric("📝 Columnas", len(df.columns))
-                with col3:
-                    st.metric("📅 Última actualización", "En tiempo real")
+                
+                # Compact status indicator in one line
+                st.markdown("""
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem; background-color: #E6ECD8; border-radius: 6px; margin: 0.5rem 0; font-size: 0.9rem;">
+                    <span style="color: #1A494C;">✅</span>
+                    <span style="color: #1A494C; font-weight: 500;">Actualmente solo se tienen datos disponibles de la Fazenda</span>
+                    <span style="color: #666666;">•</span>
+                    <span style="color: #666666;">📅 En tiempo real</span>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Reload button
                 if st.button("🔄 Recargar Datos", type="secondary", use_container_width=True):

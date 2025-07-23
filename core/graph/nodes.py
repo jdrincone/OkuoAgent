@@ -34,12 +34,12 @@ def create_data_summary(state: AgentState) -> str:
     summary = ""
     variables = []
     
-    # Add metadata context for produccion_aliar table
+    # Add comprehensive metadata context for produccion_aliar table
     try:
         from services.metadata_service import metadata_service
-        metadata_context = metadata_service.get_business_context("produccion_aliar")
+        metadata_context = metadata_service.get_prompt_context("produccion_aliar")
         if metadata_context:
-            summary += f"\n\n=== CONTEXTO DE NEGOCIO ===\n{metadata_context}\n"
+            summary += f"\n\n=== METADATA COMPLETA DE LA TABLA ===\n{metadata_context}\n"
     except Exception as e:
         logger.warning(f"Could not load metadata: {str(e)}")
     
