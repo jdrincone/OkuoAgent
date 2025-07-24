@@ -27,6 +27,13 @@ def compute_metric_dureza_mean_agroindustrial(df: pd.DataFrame) -> float:
 def compute_metric_fino_mean_agroindustrial(df: pd.DataFrame) -> float:
     return round(df["finos_pct_qa_agroindustrial"].mean(), 3)
 
+def compute_metric_diferencia_toneladas(df):
+    total_toneladas_a_producir = df["toneladas_a_producir"].sum()
+    total_toneladas_producidas = df["toneladas_producidas"].sum()
+    total_toneladas_anuladas = df["toneladas_anuladas"].sum()
+    diferencia_toneladas = total_toneladas_a_producir - total_toneladas_producidas - total_toneladas_anuladas
+    return diferencia_toneladas
+
 # Funciones de filtrado por Adiflow
 
 def filter_con_adiflow(df: pd.DataFrame) -> pd.DataFrame:

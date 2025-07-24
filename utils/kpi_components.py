@@ -21,18 +21,8 @@ def render_kpi_card(kpi_data: Dict[str, Any]) -> None:
     current_val = kpi_data['current']
     previous_val = kpi_data['previous']
     change_pct = kpi_data['change_pct']
-    
-    # Determine change icon and color based on whether lower is better
-    if inverted:
-        change_icon = "📉" if change_pct < 0 else "📈" if change_pct > 0 else "➡️"
-        change_color = "#28a745" if change_pct < 0 else "#dc3545" if change_pct > 0 else "#ffc107"
-        change_bg = "rgba(40, 167, 69, 0.1)" if change_pct < 0 else "rgba(220, 53, 69, 0.1)" if change_pct > 0 else "rgba(255, 193, 7, 0.1)"
-    else:
-        change_icon = "📈" if change_pct > 0 else "📉" if change_pct < 0 else "➡️"
-        change_color = "#28a745" if change_pct > 0 else "#dc3545" if change_pct < 0 else "#ffc107"
-        change_bg = "rgba(40, 167, 69, 0.1)" if change_pct > 0 else "rgba(220, 53, 69, 0.1)" if change_pct < 0 else "rgba(255, 193, 7, 0.1)"
-    
-    # Format current value based on unit
+
+    # Format current and previous value
     if unit == '%':
         current_display = f"{current_val:.1f}%"
         previous_display = f"{previous_val:.1f}%"
@@ -42,7 +32,59 @@ def render_kpi_card(kpi_data: Dict[str, Any]) -> None:
     else:
         current_display = f"{current_val:.1f}"
         previous_display = f"{previous_val:.1f}"
-    
+
+    # Para Sackoff con/sin Adiflow, mostrar solo diferencia absoluta y semáforo según distancia a cero
+    if name.lower() in ["sackoff con adiflow", "sackoff sin adiflow"]:
+        # Cambiar el icono solo para 'SACKOFF CON ADIFLOW'
+        if name.lower() == "sackoff con adiflow":
+            icon = "🧪"
+        diff = current_val - previous_val
+        diff_display = f"{diff:+.1f}%" if unit == '%' else f"{diff:+.1f}"
+        # Distancia a cero
+        dist_prev = abs(previous_val)
+        dist_curr = abs(current_val)
+        if dist_curr < dist_prev:
+            diff_color = "#28a745"
+            diff_bg = "rgba(40, 167, 69, 0.1)"
+            diff_icon = "✅"
+        elif dist_curr > dist_prev:
+            diff_color = "#dc3545"
+            diff_bg = "rgba(220, 53, 69, 0.1)"
+            diff_icon = "⚠️"
+        else:
+            diff_color = "#ffc107"
+            diff_bg = "rgba(255, 193, 7, 0.1)"
+            diff_icon = "➡️"
+        st.markdown(f"""
+        <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; transition: all 0.3s ease; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">{icon}</div>
+            <h3 style="color: #495057; margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase;">
+                {name}
+            </h3>
+            <div style="font-size: 2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                {current_display}
+            </div>
+            <div style="font-size: 0.85rem; color: {diff_color}; margin-bottom: 0.5rem; padding: 0.3rem 0.8rem; background: {diff_bg}; border-radius: 20px; display: inline-block; font-weight: 600;">
+                {diff_icon} {diff_display}
+            </div>
+            <div style="font-size: 0.75rem; color: #6c757d; font-weight: 500;">
+                Anterior: {previous_display}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    # Resto de KPIs: mostrar cambio porcentual
+    # Determine change icon and color based on whether lower is better
+    if inverted:
+        change_icon = "📉" if change_pct < 0 else "📈" if change_pct > 0 else "➡️"
+        change_color = "#28a745" if change_pct < 0 else "#dc3545" if change_pct > 0 else "#ffc107"
+        change_bg = "rgba(40, 167, 69, 0.1)" if change_pct < 0 else "rgba(220, 53, 69, 0.1)" if change_pct > 0 else "rgba(255, 193, 7, 0.1)"
+    else:
+        change_icon = "📈" if change_pct > 0 else "📉" if change_pct < 0 else "➡️"
+        change_color = "#28a745" if change_pct > 0 else "#dc3545" if change_pct < 0 else "#ffc107"
+        change_bg = "rgba(40, 167, 69, 0.1)" if change_pct > 0 else "rgba(220, 53, 69, 0.1)" if change_pct < 0 else "rgba(255, 193, 7, 0.1)"
+
     st.markdown(f"""
     <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; transition: all 0.3s ease; text-align: center;">
         <div style="font-size: 2.2rem; margin-bottom: 0.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">{icon}</div>
@@ -153,13 +195,24 @@ def render_main_kpis_section(kpis: Dict[str, Any]) -> None:
     Args:
         kpis: Dictionary containing all KPI data
     """
-    st.markdown("""
+    import calendar
+    from datetime import datetime
+    meses_es = [
+        '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    now = datetime.now()
+    current_month = meses_es[now.month]
+    if now.month == 1:
+        prev_month = meses_es[12]
+    else:
+        prev_month = meses_es[now.month - 1]
+    st.markdown(f"""
     <div style="margin: 3rem 0 2rem 0; padding: 2rem; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
         <h2 style="color: #2c3e50; text-align: center; margin-bottom: 0; font-size: 1.8rem; font-weight: 600; letter-spacing: 0.5px;">
             📊 DASHBOARD DE PRODUCCIÓN
         </h2>
         <p style="color: #6c757d; text-align: center; margin: 0.5rem 0 0 0; font-size: 1rem; font-weight: 400;">
-            Indicadores Clave de Rendimiento - Semana Actual vs Mes Anterior
+            Indicadores Clave de Rendimiento - {current_month} vs {prev_month}
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -183,8 +236,8 @@ def render_main_kpis_section(kpis: Dict[str, Any]) -> None:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if 'sackoff' in kpis:
-            render_kpi_card(kpis['sackoff'])
+        if 'sackoff_con_adiflow' in kpis:
+            render_kpi_card(kpis['sackoff_con_adiflow'])
     
     with col2:
         if 'sackoff_sin_adiflow' in kpis:
@@ -196,28 +249,36 @@ def render_main_kpis_section(kpis: Dict[str, Any]) -> None:
 
 
 def render_product_analysis_section(product_kpis: Dict[str, Any]) -> None:
-    """
-    Render the product analysis section (without title, integrated layout)
-    
-    Args:
-        product_kpis: Dictionary containing product analysis data
-    """
-    # Create 2-column layout for product analysis
+    # Obtener datos de menor sackoff
+    current = product_kpis.get('current_week', {}).get('best_product', {})
+    previous = product_kpis.get('previous_month', {}).get('best_product', {})
     col1, col2 = st.columns(2)
-    
     with col1:
-        render_product_analysis_card(
-            product_kpis.get('current_week', {}),
-            "📅 Semana Actual",
-            "current_week"
-        )
-    
+        nombre = current.get('nombre_producto', 'N/A')
+        sackoff = current.get('sackoff', 0)
+        st.markdown(f"""
+        <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🏅</div>
+            <h3 style="color: #495057; margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
+                Producto con Menor Sackoff<br><span style='font-size:0.95rem; font-weight:400;'>Mes Actual</span>
+            </h3>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{nombre}</div>
+            <div style="font-size: 2.1rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{sackoff:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        render_product_analysis_card(
-            product_kpis.get('previous_month', {}),
-            "📊 Mes Anterior",
-            "previous_month"
-        )
+        nombre = previous.get('nombre_producto', 'N/A')
+        sackoff = previous.get('sackoff', 0)
+        st.markdown(f"""
+        <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🏅</div>
+            <h3 style="color: #495057; margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
+                Producto con Menor Sackoff<br><span style='font-size:0.95rem; font-weight:400;'>Mes Anterior</span>
+            </h3>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{nombre}</div>
+            <div style="font-size: 2.1rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{sackoff:.1f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def render_period_info(period_info: str) -> None:
@@ -228,12 +289,13 @@ def render_period_info(period_info: str) -> None:
         period_info: String describing the analysis period
     """
     st.markdown(f"""
-    <div style="margin: 2rem 0; padding: 1.5rem; background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%); border-radius: 12px; border: 1px solid #c3e6cb; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center;">
-        <p style="color: #155724; font-size: 1.1rem; margin: 0; font-weight: 600; letter-spacing: 0.3px;">
-            📅 <strong>Período de Análisis:</strong> {period_info}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+        <div style="text-align: center; margin: 2rem 0;">
+            <h4 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.3rem; font-weight: 600;">
+                🌀 Realiza preguntas para entender cualquier indicador basado en tus datos
+            </h4>
+        </div>
+        """, unsafe_allow_html=True)
+    
 
 
 def render_debug_info(debug_info: Dict[str, Any]) -> None:

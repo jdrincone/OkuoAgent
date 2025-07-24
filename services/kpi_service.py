@@ -14,6 +14,7 @@ from utils.production_metrics import (
     compute_metric_fino_mean_agroindustrial,
     filter_con_adiflow,
     filter_sin_adiflow,
+    compute_metric_diferencia_toneladas,
 )
 
 
@@ -98,22 +99,30 @@ class KPIService:
         return self.df[self.df['fecha_produccion'] >= date_n_days_ago]
 
     def calculate_kpis(self):
-        # Últimos 7 días (current)
-        df_7d = self.get_last_n_days(7)
-        # Días 8-30 anteriores (previous)
-        df_30d = self.get_last_n_days(30)
-        df_prev = df_30d.head(23)  # Días 8-30
+        # Mes actual
+        now = datetime.now()
+        current_month = now.month
+        current_year = now.year
+        # Mes anterior
+        if current_month == 1:
+            prev_month = 12
+            prev_year = current_year - 1
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+
+        df_current = self.df[(self.df['fecha_produccion'].dt.month == current_month) & (self.df['fecha_produccion'].dt.year == current_year)]
+        df_prev = self.df[(self.df['fecha_produccion'].dt.month == prev_month) & (self.df['fecha_produccion'].dt.year == prev_year)]
 
         # Con/Sin Adiflow
-        df_7d_con_adiflow = filter_con_adiflow(df_7d)
-        df_7d_sin_adiflow = filter_sin_adiflow(df_7d)
+        df_current_con_adiflow = filter_con_adiflow(df_current)
+        df_current_sin_adiflow = filter_sin_adiflow(df_current)
         df_prev_con_adiflow = filter_con_adiflow(df_prev)
         df_prev_sin_adiflow = filter_sin_adiflow(df_prev)
 
-        def pct_change(current, previous):
-            if previous == 0:
-                return 0
-            return ((current - previous) / previous) * 100
+        # Usar 1 decimal para mostrar y calcular change_pct
+        def to_1_decimal(val):
+            return float(f"{val:.1f}") if val is not None else None
 
         kpis = {
             'pdi_mean_agroindustrial': {
@@ -121,45 +130,63 @@ class KPIService:
                 'icon': '📊',
                 'unit': '%',
                 'inverted': False,
-                'current': compute_metric_pdi_mean_agroindustrial(df_7d),
-                'previous': compute_metric_pdi_mean_agroindustrial(df_prev),
+                'current': to_1_decimal(compute_metric_pdi_mean_agroindustrial(df_current)),
+                'previous': to_1_decimal(compute_metric_pdi_mean_agroindustrial(df_prev)),
             },
             'dureza_mean_agroindustrial': {
                 'name': 'Dureza Mean Agroindustrial',
                 'icon': '💪',
                 'unit': '',
                 'inverted': False,
-                'current': compute_metric_dureza_mean_agroindustrial(df_7d),
-                'previous': compute_metric_dureza_mean_agroindustrial(df_prev),
+                'current': to_1_decimal(compute_metric_dureza_mean_agroindustrial(df_current)),
+                'previous': to_1_decimal(compute_metric_dureza_mean_agroindustrial(df_prev)),
             },
             'fino_mean_agroindustrial': {
                 'name': 'Fino Mean Agroindustrial',
                 'icon': '🔬',
                 'unit': '%',
                 'inverted': False,
-                'current': compute_metric_fino_mean_agroindustrial(df_7d),
-                'previous': compute_metric_fino_mean_agroindustrial(df_prev),
+                'current': to_1_decimal(compute_metric_fino_mean_agroindustrial(df_current)),
+                'previous': to_1_decimal(compute_metric_fino_mean_agroindustrial(df_prev)),
             },
             'sackoff_con_adiflow': {
                 'name': 'Sackoff con Adiflow',
                 'icon': '📉',
                 'unit': '%',
                 'inverted': True,
-                'current': compute_metric_sackoff(df_7d_con_adiflow),
-                'previous': compute_metric_sackoff(df_prev_con_adiflow),
+                'current': to_1_decimal(compute_metric_sackoff(df_current_con_adiflow)),
+                'previous': to_1_decimal(compute_metric_sackoff(df_prev_con_adiflow)),
             },
             'sackoff_sin_adiflow': {
                 'name': 'Sackoff sin Adiflow',
                 'icon': '📉',
                 'unit': '%',
                 'inverted': True,
-                'current': compute_metric_sackoff(df_7d_sin_adiflow),
-                'previous': compute_metric_sackoff(df_prev_sin_adiflow),
+                'current': to_1_decimal(compute_metric_sackoff(df_current_sin_adiflow)),
+                'previous': to_1_decimal(compute_metric_sackoff(df_prev_sin_adiflow)),
+            },
+            'diferencia_toneladas': {
+                'name': 'Diferencia Toneladas',
+                'icon': '⚖️',
+                'unit': '',
+                'inverted': True,
+                'current': round(compute_metric_diferencia_toneladas(df_current), 1),
+                'previous': round(compute_metric_diferencia_toneladas(df_prev), 1),
             }
         }
-        # Calcular change_pct para cada KPI
+        # Calcular change_pct usando los valores redondeados a 1 decimal
+        def pct_change_display(current, previous):
+            if current is None or previous is None:
+                return 0
+            current_disp = round(current, 1)
+            previous_disp = round(previous, 1)
+            if previous_disp == 0:
+                return 0
+            if current_disp == previous_disp:
+                return 0
+            return round(((current_disp - previous_disp) / previous_disp) * 100, 1)
         for k in kpis:
-            kpis[k]['change_pct'] = pct_change(kpis[k]['current'], kpis[k]['previous'])
+            kpis[k]['change_pct'] = pct_change_display(kpis[k]['current'], kpis[k]['previous'])
         return kpis
     
     def calculate_product_kpis(self, current_days: int = 7, previous_days: int = 30) -> Dict:
@@ -223,7 +250,19 @@ class KPIService:
         }
     
     def get_period_info(self):
-        return "Comparativo: Últimos 7 días vs Días 8-30 anteriores"
+        now = datetime.now()
+        current_month = now.month
+        current_year = now.year
+        if current_month == 1:
+            prev_month = 12
+            prev_year = current_year - 1
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+        import calendar
+        current_month_name = calendar.month_name[current_month]
+        prev_month_name = calendar.month_name[prev_month]
+        return f"Comparativo: {current_month_name} {current_year} vs {prev_month_name} {prev_year}"
 
 
 def create_kpi_service(df: pd.DataFrame) -> KPIService:
