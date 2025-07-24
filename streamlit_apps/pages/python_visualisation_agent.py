@@ -228,7 +228,8 @@ def main():
         st.markdown("""
         <div class="professional-card">
             <h3 style="color: var(--primary-color); margin-bottom: 1rem;">💬 Dashboard Inteligente</h3>
-            <p style="color: var(--dark-green); font-size: 1.1rem;">Interactúa con tu agente de IA para analizar datos de producción, crear visualizaciones y obtener insights.</p>
+            <p style="color: var(--dark-green); font-size: 1.1rem;">Interactúa con tus datos de producción y calidad en tiempo real. Okuo-Agent convierte métricas en respuestas,
+             tendencias en decisiones y gráficos en insights claros. No solo ves lo que pasó: entiendes lo que significa y lo que viene.</p>
         </div>
         """, unsafe_allow_html=True)
         
