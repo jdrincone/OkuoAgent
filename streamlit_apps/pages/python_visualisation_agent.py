@@ -324,8 +324,7 @@ def main():
                         debug_info = kpi_service.get_debug_info()
                         period_info = kpi_service.get_period_info()
                         
-                        # Display debug information
-                        render_debug_info(debug_info)
+                                # Debug information removed as requested
                         
                         # Display main KPIs
                         render_main_kpis_section(main_kpis)

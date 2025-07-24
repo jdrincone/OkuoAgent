@@ -85,6 +85,14 @@ class KPIService:
         numeric_columns = metrics_df.select_dtypes(include=[np.number]).columns
         total_metrics = metrics_df[numeric_columns].sum()
         
+        # CORRECCIÓN: Recalcular el sackoff correctamente para el período total
+        # En lugar de sumar los sackoffs por fecha, calcular el sackoff del período total
+        if total_metrics['total_toneladas_producidas'] > 0:
+            total_metrics['sackoff'] = (total_metrics['diferencia_toneladas'] / 
+                                      total_metrics['total_toneladas_producidas'] * 100)
+        else:
+            total_metrics['sackoff'] = 0
+        
         return total_metrics.to_dict()
     
     def _calculate_period_metrics_without_adiflow(self, data: pd.DataFrame, group_by: str = 'fecha_produccion') -> Dict:
@@ -117,6 +125,14 @@ class KPIService:
         # Sum numeric columns for total metrics
         numeric_columns = metrics_df.select_dtypes(include=[np.number]).columns
         total_metrics = metrics_df[numeric_columns].sum()
+        
+        # CORRECCIÓN: Recalcular el sackoff correctamente para el período total
+        # En lugar de sumar los sackoffs por fecha, calcular el sackoff del período total
+        if total_metrics['total_toneladas_producidas'] > 0:
+            total_metrics['sackoff'] = (total_metrics['diferencia_toneladas'] / 
+                                      total_metrics['total_toneladas_producidas'] * 100)
+        else:
+            total_metrics['sackoff'] = 0
         
         return total_metrics.to_dict()
     
