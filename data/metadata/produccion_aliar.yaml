@@ -1,0 +1,172 @@
+description: "Tabla que contiene registros de órdenes de producción de la planta FAZENDA, incluyendo insumos, rendimientos, condiciones de operación y métricas de calidad en tiempo real."
+
+columns:
+  - name: "id_registro"
+    description: "Identificador único del registro"
+    type: "integer"
+    business_meaning: "Clave primaria de la tabla"
+  
+  - name: "orden_produccion"
+    description: "Código único de la orden de producción"
+    type: "string"
+    business_meaning: "Identificador de la orden de trabajo"
+  
+  - name: "fecha_produccion"
+    description: "Fecha exacta de producción"
+    type: "datetime"
+    business_meaning: "Cuándo se realizó la producción"
+  
+  - name: "mes_produccion"
+    description: "Mes de producción para agrupaciones"
+    type: "string"
+    business_meaning: "Mes para análisis temporales"
+  
+  - name: "planta"
+    description: "Planta donde se realizó la producción"
+    type: "string"
+    business_meaning: "Ubicación de la producción"
+  
+  - name: "referencia_producto"
+    description: "Código de referencia del producto"
+    type: "string"
+    business_meaning: "Identificador técnico del producto"
+  
+  - name: "nombre_producto"
+    description: "Nombre comercial del producto"
+    type: "string"
+    business_meaning: "Nombre del producto para reportes"
+  
+  - name: "toneladas_a_producir"
+    description: "Cantidad planeada de toneladas a producir"
+    type: "float"
+    business_meaning: "Meta de producción"
+  
+  - name: "toneladas_materia_prima_consumida"
+    description: "Toneladas de materia prima utilizadas"
+    type: "float"
+    business_meaning: "Insumos consumidos"
+  
+  - name: "toneladas_anuladas"
+    description: "Toneladas de producto anuladas o descartadas"
+    type: "float"
+    business_meaning: "Pérdidas por calidad"
+  
+  - name: "toneladas_producidas"
+    description: "Toneladas efectivamente producidas"
+    type: "float"
+    business_meaning: "Producción real"
+  
+  - name: "tiene_adiflow"
+    description: "Indica si se utilizó aditivo Adiflow (Con Adiflow/Sin Adiflow)"
+    type: "boolean"
+    business_meaning: "Uso de aditivo para calidad"
+  
+  - name: "peso_agua_kg"
+    description: "Peso del agua en kilogramos"
+    type: "float"
+    business_meaning: "Contenido de humedad"
+  
+  - name: "order_produccion_despachada"
+    description: "Indica si la orden fue despachada"
+    type: "boolean"
+    business_meaning: "Estado de despacho"
+  
+  - name: "control_aceite_postengrase_pct"
+    description: "Porcentaje de aceite aplicado post-engrase"
+    type: "float"
+    business_meaning: "Control de lubricación"
+  
+  - name: "control_presion_distribuidor_psi"
+    description: "Presión del distribuidor en PSI"
+    type: "float"
+    business_meaning: "Control de presión del sistema"
+  
+  - name: "control_carga_alimentador_pct"
+    description: "Porcentaje de carga del alimentador"
+    type: "float"
+    business_meaning: "Control de alimentación"
+  
+  - name: "control_presion_acondicionador_psi"
+    description: "Presión del acondicionador en PSI"
+    type: "float"
+    business_meaning: "Control de acondicionamiento"
+  
+  - name: "durabilidad_pct_qa_agroindustrial"
+    description: "Porcentaje de durabilidad oficial (QA)"
+    type: "float"
+    business_meaning: "Calidad oficial medida"
+  
+  - name: "dureza_qa_agroindustrial"
+    description: "Dureza física del pellet (kg/cm²) - QA"
+    type: "float"
+    business_meaning: "Resistencia física oficial"
+  
+  - name: "finos_pct_qa_agroindustrial"
+    description: "Porcentaje de finos oficial (QA)"
+    type: "float"
+    business_meaning: "Calidad de granulometría oficial"
+  
+  - name: "durabilidad_pct_produccion"
+    description: "Porcentaje de durabilidad medido en producción"
+    type: "float"
+    business_meaning: "Calidad medida en línea"
+  
+  - name: "dureza_produccion"
+    description: "Dureza física del pellet (kg/cm²) - Producción"
+    type: "float"
+    business_meaning: "Resistencia física en línea"
+  
+  - name: "finos_pct_produccion"
+    description: "Porcentaje de finos medido en producción"
+    type: "float"
+    business_meaning: "Granulometría en línea"
+  
+  - name: "diferencia_toneladas_por_orden_produccion"
+    description: "Diferencia entre toneladas planificadas y producidas"
+    type: "float"
+    business_meaning: "Desviación de producción"
+  
+  - name: "sackoff_por_orden_produccion"
+    description: "Pérdida total por orden de producción"
+    type: "float"
+    business_meaning: "Sackoff total"
+
+calculated_metrics:
+  - name: "eficiencia_produccion"
+    formula: "(toneladas_producidas / toneladas_a_producir) * 100"
+    description: "Porcentaje de eficiencia de producción"
+  
+  - name: "merma_total"
+    formula: "toneladas_anuladas + diferencia_toneladas_por_orden_produccion"
+    description: "Pérdida total incluyendo anulaciones y desviaciones"
+  
+  - name: "rendimiento_materia_prima"
+    formula: "toneladas_producidas / toneladas_materia_prima_consumida"
+    description: "Eficiencia en el uso de materia prima"
+
+business_rules:
+  - "Las métricas de QA agroindustrial son las medidas oficiales de calidad"
+  - "El aditivo Adiflow puede afectar significativamente la calidad del producto"
+  - "Los parámetros de presión y carga afectan la calidad y eficiencia"
+  - "La eficiencia de producción debe estar entre 85% y 100%"
+  - "La durabilidad QA debe ser mayor al 90%"
+  - "La dureza QA debe estar entre 8-12 kg/cm²"
+
+key_metrics:
+  - "Eficiencia de producción (meta: >90%)"
+  - "Calidad QA (durabilidad >90%, dureza 8-12 kg/cm²)"
+  - "Sackoff total (meta: <5%)"
+  - "Rendimiento de materia prima (meta: >95%)"
+
+relationships:
+  - "Adiflow → Mejora calidad → Menor sackoff"
+  - "Presión acondicionador → Calidad del pellet"
+  - "Carga alimentador → Eficiencia de producción"
+  - "Aceite post-engrase → Durabilidad del producto"
+
+analysis_recommendations:
+  - "Análisis de tendencias de eficiencia por mes"
+  - "Comparación de calidad con y sin Adiflow"
+  - "Correlación entre parámetros de control y calidad"
+  - "Análisis de outliers en sackoff"
+  - "Eficiencia por producto y turno" 

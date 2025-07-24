@@ -33,10 +33,32 @@ model = chat_template | model
 def create_data_summary(state: AgentState) -> str:
     summary = ""
     variables = []
+    
+    # Add comprehensive metadata context for produccion_aliar table
+    try:
+        from services.metadata_service import metadata_service
+        metadata_context = metadata_service.get_prompt_context("produccion_aliar")
+        if metadata_context:
+            summary += f"\n\n=== METADATA COMPLETA DE LA TABLA ===\n{metadata_context}\n"
+    except Exception as e:
+        logger.warning(f"Could not load metadata: {str(e)}")
+    
     for d in state["input_data"]:
         variables.append(d.variable_name)
         summary += f"\n\nVariable: {d.variable_name}\n"
         summary += f"Description: {d.data_description}"
+        
+        # Add specific column information for produccion_aliar
+        if d.variable_name == "produccion_aliar":
+            try:
+                from services.metadata_service import metadata_service
+                column_info = metadata_service.get_column_info("produccion_aliar")
+                if column_info:
+                    summary += f"\n\nColumnas disponibles en {d.variable_name}:"
+                    for col_name, col_desc in column_info.items():
+                        summary += f"\n- {col_name}: {col_desc}"
+            except Exception as e:
+                logger.warning(f"Could not load column info: {str(e)}")
     
     if "current_variables" in state:
         remaining_variables = [v for v in state["current_variables"] if v not in variables]

@@ -64,11 +64,59 @@ def get_session_info() -> dict:
 plotly_saving_code = f"""import pickle
 import uuid
 import plotly
+import pandas as pd
+import numpy as np
+
+def clean_figure_for_pickle(fig):
+    \"\"\"Clean figure data to ensure it's pickle-serializable\"\"\"
+    if hasattr(fig, 'data'):
+        for trace in fig.data:
+            # Clean x-axis data
+            if hasattr(trace, 'x') and trace.x is not None:
+                if isinstance(trace.x, pd.Series):
+                    # Convert pandas objects to strings
+                    trace.x = trace.x.astype(str)
+                elif isinstance(trace.x, (list, np.ndarray)):
+                    trace.x = [str(x) if hasattr(x, 'strftime') or isinstance(x, pd.Period) else x for x in trace.x]
+                elif hasattr(trace.x, 'strftime'):
+                    trace.x = str(trace.x)
+            
+            # Clean y-axis data
+            if hasattr(trace, 'y') and trace.y is not None:
+                if isinstance(trace.y, pd.Series):
+                    # Convert pandas objects to strings
+                    trace.y = trace.y.astype(str)
+                elif isinstance(trace.y, (list, np.ndarray)):
+                    trace.y = [str(y) if hasattr(y, 'strftime') or isinstance(y, pd.Period) else y for y in trace.y]
+                elif hasattr(trace.y, 'strftime'):
+                    trace.y = str(trace.y)
+            
+            # Clean text data if present
+            if hasattr(trace, 'text') and trace.text is not None:
+                if isinstance(trace.text, pd.Series):
+                    trace.text = trace.text.astype(str)
+                elif isinstance(trace.text, (list, np.ndarray)):
+                    trace.text = [str(t) if hasattr(t, 'strftime') or isinstance(t, pd.Period) else t for t in trace.text]
+            
+            # Clean hover data if present
+            if hasattr(trace, 'hovertext') and trace.hovertext is not None:
+                if isinstance(trace.hovertext, pd.Series):
+                    trace.hovertext = trace.hovertext.astype(str)
+                elif isinstance(trace.hovertext, (list, np.ndarray)):
+                    trace.hovertext = [str(h) if hasattr(h, 'strftime') or isinstance(h, pd.Period) else h for h in trace.hovertext]
+    
+    return fig
 
 for figure in plotly_figures:
-    pickle_filename = f"{config.IMAGES_DIR}/{{uuid.uuid4()}}.pickle"
-    with open(pickle_filename, 'wb') as f:
-        pickle.dump(figure, f)
+    try:
+        # Clean the figure to ensure it's serializable
+        clean_figure = clean_figure_for_pickle(figure)
+        pickle_filename = f"{config.IMAGES_DIR}/{{uuid.uuid4()}}.pickle"
+        with open(pickle_filename, 'wb') as f:
+            pickle.dump(clean_figure, f)
+    except Exception as e:
+        print(f"Error saving figure: {{e}}")
+        continue
 """
 
 @tool(parse_docstring=True)
