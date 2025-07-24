@@ -9,6 +9,8 @@ from typing import Union, List
 
 
 def compute_metric_sackoff(df: pd.DataFrame) -> float:
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     total_toneladas_a_producir = df["toneladas_a_producir"].sum()
     total_toneladas_producidas = df["toneladas_producidas"].sum()
     total_toneladas_anuladas = df["toneladas_anuladas"].sum()
@@ -28,6 +30,8 @@ def compute_metric_fino_mean_agroindustrial(df: pd.DataFrame) -> float:
     return round(df["finos_pct_qa_agroindustrial"].mean(), 3)
 
 def compute_metric_diferencia_toneladas(df):
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     total_toneladas_a_producir = df["toneladas_a_producir"].sum()
     total_toneladas_producidas = df["toneladas_producidas"].sum()
     total_toneladas_anuladas = df["toneladas_anuladas"].sum()
@@ -37,9 +41,13 @@ def compute_metric_diferencia_toneladas(df):
 # Funciones de filtrado por Adiflow
 
 def filter_con_adiflow(df: pd.DataFrame) -> pd.DataFrame:
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     return df[df["tiene_adiflow"] == "Con Adiflow"]
 
 def filter_sin_adiflow(df: pd.DataFrame) -> pd.DataFrame:
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     return df[df["tiene_adiflow"] == "Sin Adiflow"]
 
 
@@ -53,6 +61,8 @@ def calculate_kpis(df: pd.DataFrame) -> dict:
     Returns:
         Diccionario con KPIs calculados
     """
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     kpis = {
         'total_toneladas_producidas': df['toneladas_producidas'].sum(),
         'total_toneladas_anuladas': df['toneladas_anuladas'].sum(),
@@ -81,6 +91,8 @@ def analyze_trends(df: pd.DataFrame, group_col: str = 'mes_produccion') -> pd.Da
         DataFrame con análisis de tendencias
     """
     # Calcular variaciones mes a mes
+    cond = df["order_produccion_despachada"] == 'Si'
+    df = df[cond].copy()
     df['variacion_sackoff'] = df['sackoff'].pct_change() * 100
     df['variacion_produccion'] = df['total_toneladas_producidas'].pct_change() * 100
     df['variacion_eficiencia'] = df['total_toneladas_producidas'].div(

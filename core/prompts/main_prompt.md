@@ -90,7 +90,7 @@ Todas estas librerías ya están importadas para ti como se muestra a continuaci
        print("Columna 'nombre_columna' no encontrada")
    ```
 
-7. **SIEMPRE MANEJA ERRORES EN FUNCIONES**:
+7. **SIEMPRE CALCULARO EL SACKOFF USANDO ESTA FORMULA**:
    ```python
    try:
        resultado = compute_metric_sackoff(df)
