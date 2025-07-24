@@ -190,6 +190,11 @@ df_group["diferencia_toneladas"] = (df_group["total_toneladas_a_producir"] -
 df_group["sackoff"] = df_group["diferencia_toneladas"].div(df_group["total_toneladas_producidas"]) * 100
 ```
 
+**IMPORTANTE:** Para calcular el sackoff de un grupo (semana, mes, etc.), SIEMPRE usa la función `compute_metric_by_group` que ya incluye este cálculo correcto. NO calcules el sackoff como promedio de sackoffs individuales, sino como:
+```
+Sackoff del grupo = (Diferencia total del grupo / Toneladas producidas total del grupo) * 100
+```
+
 **INTERPRETACIÓN DEL SACKOFF:**
 - **Sackoff = 0%**: Producción perfecta (sin pérdidas)
 - **Sackoff > 0%**: Hay pérdidas de producción

@@ -302,6 +302,49 @@ def main():
                 
                 st.divider()
                 
+                # Display KPIs using the new service architecture
+                if df is not None and len(df) > 0:
+                    try:
+                        # Import the new KPI service and components
+                        from services.kpi_service import create_kpi_service
+                        from utils.kpi_components import (
+                            render_main_kpis_section, 
+                            render_product_analysis_section,
+                            render_period_info,
+                            render_debug_info,
+                            render_error_message
+                        )
+                        
+                        # Create KPI service
+                        kpi_service = create_kpi_service(df)
+                        
+                        # Calculate all KPIs
+                        main_kpis = kpi_service.calculate_main_kpis()
+                        product_kpis = kpi_service.calculate_product_kpis()
+                        debug_info = kpi_service.get_debug_info()
+                        period_info = kpi_service.get_period_info()
+                        
+                        # Display debug information
+                        render_debug_info(debug_info)
+                        
+                        # Display main KPIs
+                        render_main_kpis_section(main_kpis)
+                        
+                        # Display period information
+                        render_period_info(period_info)
+                        
+                        # Display product analysis
+                        render_product_analysis_section(product_kpis)
+                        
+                        st.divider()
+                        
+                    except ValueError as e:
+                        render_error_message(str(e))
+                        st.info("📋 Columnas disponibles: " + ", ".join(df.columns.tolist()))
+                    except Exception as e:
+                        render_error_message(f"Error al calcular KPIs: {str(e)}")
+                        st.exception(e)
+                
                 # Initialize chatbot with session management
                 if 'visualisation_chatbot' not in st.session_state:
                     # Create new session if needed
