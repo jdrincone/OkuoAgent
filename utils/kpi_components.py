@@ -249,36 +249,8 @@ def render_main_kpis_section(kpis: Dict[str, Any]) -> None:
 
 
 def render_product_analysis_section(product_kpis: Dict[str, Any]) -> None:
-    # Obtener datos de menor sackoff
-    current = product_kpis.get('current_week', {}).get('best_product', {})
-    previous = product_kpis.get('previous_month', {}).get('best_product', {})
-    col1, col2 = st.columns(2)
-    with col1:
-        nombre = current.get('nombre_producto', 'N/A')
-        sackoff = current.get('sackoff', 0)
-        st.markdown(f"""
-        <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; text-align: center;">
-            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🏅</div>
-            <h3 style="color: #495057; margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
-                Producto con Menor Sackoff<br><span style='font-size:0.95rem; font-weight:400;'>Mes Actual</span>
-            </h3>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{nombre}</div>
-            <div style="font-size: 2.1rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{sackoff:.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        nombre = previous.get('nombre_producto', 'N/A')
-        sackoff = previous.get('sackoff', 0)
-        st.markdown(f"""
-        <div style="background: white; border-radius: 12px; padding: 1.5rem; margin: 0.75rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #e9ecef; text-align: center;">
-            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🏅</div>
-            <h3 style="color: #495057; margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase;">
-                Producto con Menor Sackoff<br><span style='font-size:0.95rem; font-weight:400;'>Mes Anterior</span>
-            </h3>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{nombre}</div>
-            <div style="font-size: 2.1rem; font-weight: 700; color: #27ae60; margin-bottom: 0.5rem;">{sackoff:.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Función comentada - KPIs de producto con menor sackoff removidos
+    pass
 
 
 def render_period_info(period_info: str) -> None:
