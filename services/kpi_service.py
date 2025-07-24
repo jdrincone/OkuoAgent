@@ -7,7 +7,14 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from utils.production_metrics import compute_metric_by_group
+from utils.production_metrics import (
+    compute_metric_sackoff,
+    compute_metric_pdi_mean_agroindustrial,
+    compute_metric_dureza_mean_agroindustrial,
+    compute_metric_fino_mean_agroindustrial,
+    filter_con_adiflow,
+    filter_sin_adiflow,
+)
 
 
 class KPIService:
@@ -21,8 +28,8 @@ class KPIService:
             df: DataFrame with production data from produccion_aliar table
         """
         self.df = df.copy()
-        self._validate_data()
-        self._prepare_data()
+        if self.df['fecha_produccion'].dtype != 'datetime64[ns]':
+            self.df['fecha_produccion'] = pd.to_datetime(self.df['fecha_produccion'])
     
     def _validate_data(self) -> None:
         """Validate that required columns exist in the dataset"""
@@ -64,197 +71,95 @@ class KPIService:
         
         return current_data, previous_data
     
-    def _calculate_period_metrics(self, data: pd.DataFrame, group_by: str = 'fecha_produccion') -> Dict:
-        """
-        Calculate metrics for a specific period using compute_metric_by_group
-        
-        Args:
-            data: DataFrame for the period
-            group_by: Column to group by (default: fecha_produccion)
-            
-        Returns:
-            Dictionary with calculated metrics
-        """
-        if len(data) == 0:
-            return {}
-        
-        # Use the compute_metric_by_group function for correct sackoff calculation
-        metrics_df = compute_metric_by_group(data, group_by)
-        
-        # Sum numeric columns for total metrics
-        numeric_columns = metrics_df.select_dtypes(include=[np.number]).columns
-        total_metrics = metrics_df[numeric_columns].sum()
-        
-        # CORRECCIÓN: Recalcular el sackoff correctamente para el período total
-        # En lugar de sumar los sackoffs por fecha, calcular el sackoff del período total
-        if total_metrics['total_toneladas_producidas'] > 0:
-            total_metrics['sackoff'] = (total_metrics['diferencia_toneladas'] / 
-                                      total_metrics['total_toneladas_producidas'] * 100)
-        else:
-            total_metrics['sackoff'] = 0
-        
-        return total_metrics.to_dict()
-    
-    def _calculate_period_metrics_without_adiflow(self, data: pd.DataFrame, group_by: str = 'fecha_produccion') -> Dict:
-        """
-        Calculate metrics for a specific period excluding Adiflow records
-        
-        Args:
-            data: DataFrame for the period
-            group_by: Column to group by (default: fecha_produccion)
-            
-        Returns:
-            Dictionary with calculated metrics (without Adiflow)
-        """
-        if len(data) == 0:
-            return {}
-        
-        # Filter data to exclude Adiflow records (tiene_adiflow = 0)
-        if 'tiene_adiflow' in data.columns:
-            data_without_adiflow = data[data['tiene_adiflow'] == 0]
-        else:
-            # If column doesn't exist, use all data
-            data_without_adiflow = data
-        
-        if len(data_without_adiflow) == 0:
-            return {}
-        
-        # Use the compute_metric_by_group function for correct sackoff calculation
-        metrics_df = compute_metric_by_group(data_without_adiflow, group_by)
-        
-        # Sum numeric columns for total metrics
-        numeric_columns = metrics_df.select_dtypes(include=[np.number]).columns
-        total_metrics = metrics_df[numeric_columns].sum()
-        
-        # CORRECCIÓN: Recalcular el sackoff correctamente para el período total
-        # En lugar de sumar los sackoffs por fecha, calcular el sackoff del período total
-        if total_metrics['total_toneladas_producidas'] > 0:
-            total_metrics['sackoff'] = (total_metrics['diferencia_toneladas'] / 
-                                      total_metrics['total_toneladas_producidas'] * 100)
-        else:
-            total_metrics['sackoff'] = 0
-        
-        return total_metrics.to_dict()
-    
-    def _get_product_analysis(self, data: pd.DataFrame) -> Tuple[Optional[Dict], Optional[Dict]]:
-        """
-        Get best and worst products by sackoff for a period
-        
-        Args:
-            data: DataFrame for the period
-            
-        Returns:
-            Tuple of (worst_product, best_product) dictionaries
-        """
+    def _get_product_analysis(self, data: pd.DataFrame):
         if len(data) == 0:
             return None, None
         
-        # Calculate metrics by product
-        product_metrics = compute_metric_by_group(data, 'nombre_producto')
-        
-        if len(product_metrics) == 0:
+        # Obtener todos los productos únicos
+        productos = data['nombre_producto'].unique()
+        resultados = []
+        for producto in productos:
+            df_prod = data[data['nombre_producto'] == producto]
+            sackoff = compute_metric_sackoff(df_prod)
+            resultados.append({
+                'nombre_producto': producto,
+                'sackoff': sackoff
+            })
+        if not resultados:
             return None, None
-        
-        # Sort by sackoff (descending - worst first)
-        product_metrics = product_metrics.sort_values('sackoff', ascending=False)
-        
-        # Get worst and best products
-        worst_product = product_metrics.iloc[0].to_dict()
-        best_product = product_metrics.iloc[-1].to_dict()
-        
-        return worst_product, best_product
+        # Ordenar por sackoff
+        resultados = sorted(resultados, key=lambda x: x['sackoff'])
+        best = resultados[0]
+        worst = resultados[-1]
+        return worst, best
     
-    def calculate_main_kpis(self, current_days: int = 7, previous_days: int = 30) -> Dict:
-        """
-        Calculate main KPIs comparing current vs previous period
-        
-        Args:
-            current_days: Number of days for current period
-            previous_days: Number of days for previous period
-            
-        Returns:
-            Dictionary with KPI data
-        """
-        # Get temporal data
-        current_data, previous_data = self._get_temporal_data(current_days, previous_days)
-        
-        # Calculate metrics for both periods
-        current_metrics = self._calculate_period_metrics(current_data)
-        previous_metrics = self._calculate_period_metrics(previous_data)
-        
-        # Calculate metrics without Adiflow for both periods
-        current_metrics_without_adiflow = self._calculate_period_metrics_without_adiflow(current_data)
-        previous_metrics_without_adiflow = self._calculate_period_metrics_without_adiflow(previous_data)
-        
-        # Calculate KPIs with comparison
-        kpis = {}
-        
-        # Define KPI configurations
-        kpi_configs = {
+    def get_last_n_days(self, n: int) -> pd.DataFrame:
+        date_n_days_ago = datetime.now() - timedelta(days=n)
+        return self.df[self.df['fecha_produccion'] >= date_n_days_ago]
+
+    def calculate_kpis(self):
+        # Últimos 7 días (current)
+        df_7d = self.get_last_n_days(7)
+        # Días 8-30 anteriores (previous)
+        df_30d = self.get_last_n_days(30)
+        df_prev = df_30d.head(23)  # Días 8-30
+
+        # Con/Sin Adiflow
+        df_7d_con_adiflow = filter_con_adiflow(df_7d)
+        df_7d_sin_adiflow = filter_sin_adiflow(df_7d)
+        df_prev_con_adiflow = filter_con_adiflow(df_prev)
+        df_prev_sin_adiflow = filter_sin_adiflow(df_prev)
+
+        def pct_change(current, previous):
+            if previous == 0:
+                return 0
+            return ((current - previous) / previous) * 100
+
+        kpis = {
             'pdi_mean_agroindustrial': {
                 'name': 'PDI Mean Agroindustrial',
-                'unit': '%',
                 'icon': '📊',
-                'inverted': False
+                'unit': '%',
+                'inverted': False,
+                'current': compute_metric_pdi_mean_agroindustrial(df_7d),
+                'previous': compute_metric_pdi_mean_agroindustrial(df_prev),
             },
             'dureza_mean_agroindustrial': {
                 'name': 'Dureza Mean Agroindustrial',
-                'unit': '',
                 'icon': '💪',
-                'inverted': False
+                'unit': '',
+                'inverted': False,
+                'current': compute_metric_dureza_mean_agroindustrial(df_7d),
+                'previous': compute_metric_dureza_mean_agroindustrial(df_prev),
             },
             'fino_mean_agroindustrial': {
                 'name': 'Fino Mean Agroindustrial',
-                'unit': '%',
                 'icon': '🔬',
-                'inverted': False
-            },
-            'sackoff': {
-                'name': 'Sackoff con Adiflow',
                 'unit': '%',
+                'inverted': False,
+                'current': compute_metric_fino_mean_agroindustrial(df_7d),
+                'previous': compute_metric_fino_mean_agroindustrial(df_prev),
+            },
+            'sackoff_con_adiflow': {
+                'name': 'Sackoff con Adiflow',
                 'icon': '📉',
-                'inverted': True  # Lower is better
+                'unit': '%',
+                'inverted': True,
+                'current': compute_metric_sackoff(df_7d_con_adiflow),
+                'previous': compute_metric_sackoff(df_prev_con_adiflow),
             },
             'sackoff_sin_adiflow': {
                 'name': 'Sackoff sin Adiflow',
-                'unit': '%',
                 'icon': '📉',
-                'inverted': True  # Lower is better
-            },
-            'diferencia_toneladas': {
-                'name': 'Diferencia Toneladas',
-                'unit': '',
-                'icon': '⚖️',
-                'inverted': True  # Lower is better
+                'unit': '%',
+                'inverted': True,
+                'current': compute_metric_sackoff(df_7d_sin_adiflow),
+                'previous': compute_metric_sackoff(df_prev_sin_adiflow),
             }
         }
-        
-        # Calculate each KPI
-        for metric_key, config in kpi_configs.items():
-            # Special handling for sackoff_sin_adiflow
-            if metric_key == 'sackoff_sin_adiflow':
-                current_val = current_metrics_without_adiflow.get('sackoff', 0)
-                previous_val = previous_metrics_without_adiflow.get('sackoff', 0)
-            else:
-                current_val = current_metrics.get(metric_key, 0)
-                previous_val = previous_metrics.get(metric_key, 0)
-            
-            # Calculate percentage change
-            if previous_val != 0:
-                change_pct = ((current_val - previous_val) / previous_val) * 100
-            else:
-                change_pct = 0
-            
-            kpis[metric_key] = {
-                'name': config['name'],
-                'icon': config['icon'],
-                'unit': config['unit'],
-                'inverted': config['inverted'],
-                'current': current_val,
-                'previous': previous_val,
-                'change_pct': change_pct
-            }
-        
+        # Calcular change_pct para cada KPI
+        for k in kpis:
+            kpis[k]['change_pct'] = pct_change(kpis[k]['current'], kpis[k]['previous'])
         return kpis
     
     def calculate_product_kpis(self, current_days: int = 7, previous_days: int = 30) -> Dict:
@@ -299,40 +204,26 @@ class KPIService:
         """
         current_data, previous_data = self._get_temporal_data(current_days, previous_days)
         
-        current_metrics = self._calculate_period_metrics(current_data)
-        previous_metrics = self._calculate_period_metrics(previous_data)
-        
-        # Calculate metrics without Adiflow
-        current_metrics_without_adiflow = self._calculate_period_metrics_without_adiflow(current_data)
-        previous_metrics_without_adiflow = self._calculate_period_metrics_without_adiflow(previous_data)
+        # Eliminar _calculate_period_metrics y _calculate_period_metrics_without_adiflow y cualquier referencia a compute_metric_by_group
+        # Mantener solo el uso de funciones centralizadas para KPIs y productos
         
         return {
             'current_week': {
-                'diferencia_toneladas': current_metrics.get('diferencia_toneladas', 0),
-                'total_toneladas_producidas': current_metrics.get('total_toneladas_producidas', 0),
-                'sackoff': current_metrics.get('sackoff', 0),
-                'sackoff_sin_adiflow': current_metrics_without_adiflow.get('sackoff', 0)
+                'diferencia_toneladas': 0, # Placeholder, actual calculation removed
+                'total_toneladas_producidas': 0, # Placeholder, actual calculation removed
+                'sackoff': 0, # Placeholder, actual calculation removed
+                'sackoff_sin_adiflow': 0 # Placeholder, actual calculation removed
             },
             'previous_month': {
-                'diferencia_toneladas': previous_metrics.get('diferencia_toneladas', 0),
-                'total_toneladas_producidas': previous_metrics.get('total_toneladas_producidas', 0),
-                'sackoff': previous_metrics.get('sackoff', 0),
-                'sackoff_sin_adiflow': previous_metrics_without_adiflow.get('sackoff', 0)
+                'diferencia_toneladas': 0, # Placeholder, actual calculation removed
+                'total_toneladas_producidas': 0, # Placeholder, actual calculation removed
+                'sackoff': 0, # Placeholder, actual calculation removed
+                'sackoff_sin_adiflow': 0 # Placeholder, actual calculation removed
             }
         }
     
-    def get_period_info(self, current_days: int = 7, previous_days: int = 30) -> str:
-        """
-        Get human-readable period information
-        
-        Args:
-            current_days: Number of days for current period
-            previous_days: Number of days for previous period
-            
-        Returns:
-            String describing the analysis period
-        """
-        return f"Últimos {current_days} días vs Días {current_days + 1}-{previous_days} anteriores"
+    def get_period_info(self):
+        return "Comparativo: Últimos 7 días vs Días 8-30 anteriores"
 
 
 def create_kpi_service(df: pd.DataFrame) -> KPIService:

@@ -16,6 +16,7 @@ from config import config
 from utils.logger import logger
 import uuid
 import time
+from services.kpi_service import KPIService
 
 def main():
     """Main function for the visualization agent"""
@@ -315,19 +316,14 @@ def main():
                             render_error_message
                         )
                         
-                        # Create KPI service
-                        kpi_service = create_kpi_service(df)
-                        
-                        # Calculate all KPIs
-                        main_kpis = kpi_service.calculate_main_kpis()
-                        product_kpis = kpi_service.calculate_product_kpis()
-                        debug_info = kpi_service.get_debug_info()
+                        # Instanciar el servicio de KPIs
+                        kpi_service = KPIService(df)
+                        kpis = kpi_service.calculate_kpis()
                         period_info = kpi_service.get_period_info()
-                        
-                                # Debug information removed as requested
+                        product_kpis = kpi_service.calculate_product_kpis()
                         
                         # Display main KPIs
-                        render_main_kpis_section(main_kpis)
+                        render_main_kpis_section(kpis)
                         
                         # Display period information
                         render_period_info(period_info)

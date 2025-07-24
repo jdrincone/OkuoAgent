@@ -93,7 +93,7 @@ Todas estas librerías ya están importadas para ti como se muestra a continuaci
 7. **SIEMPRE MANEJA ERRORES EN FUNCIONES**:
    ```python
    try:
-       resultado = compute_metric_by_group(produccion_aliar, "mes_produccion")
+       resultado = compute_metric_sackoff(df)
        print("Función ejecutada exitosamente")
    except Exception as e:
        print(f"Error al ejecutar función: {{e}}")
@@ -113,7 +113,9 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, mean_squared_error, r2_score
 
 # Importar utilidades de métricas de producción
-from utils.production_metrics import compute_metric_by_group, calculate_kpis, analyze_trends, detect_anomalies
+from utils.production_metrics import compute_metric_sackoff, compute_metric_pdi_mean_agroindustrial,compute_metric_dureza_mean_agroindustrial,
+compute_metric_fino_mean_agroindustrial,
+filter_con_adiflow, filter_sin_adiflow, analyze_trends, detect_anomalies
 ```
 
 ## Manejo de Fechas y Tiempo
@@ -139,61 +141,38 @@ from utils.production_metrics import compute_metric_by_group, calculate_kpis, an
 ## Funciones de Utilidades Disponibles
 **USA SIEMPRE ESTAS FUNCIONES** importadas desde `utils.production_metrics`:
 
-- **`compute_metric_by_group(df, cols)`**: Calcula métricas agregadas por grupo de columnas entiende si la métrica que te piden es alguna de las siguientes que tiene
-el dataframe que devuelve la función: 'total_toneladas_a_producir',
-  'total_toneladas_materia_prima_consumida', 'total_toneladas_anuladas',
-  'total_toneladas_producidas', 'cantidad_orden_produccion',
-  'pdi_mean_agroindustrial', 'dureza_mean_agroindustrial',
-  'fino_mean_agroindustrial', 'pdi_mean_prod', 'dureza_mean_prod',
-  'fino_mean_prod', 'aceite_postengrase_mean',
-  'presion_distribuidor_mean', 'carga_alimentador_mean',
-  'presion_acondicionador_mean', 'diferencia_toneladas', 'sackoff'
-- **`calculate_kpis(df)`**: Calcula KPIs de producción
-- **`analyze_trends(df, column, group_by=None)`**: Analiza tendencias temporales
-- **`detect_anomalies(df, column, method='iqr')`**: Detecta anomalías en datos
+- **`compute_metric_sackoff(df)`**: Calcula el sackoff total del DataFrame filtrado.
+- **`compute_metric_pdi_mean_agroindustrial(df)`**: Calcula el PDI agroindustrial promedio.
+- **`compute_metric_dureza_mean_agroindustrial(df)`**: Calcula la dureza agroindustrial promedio.
+- **`compute_metric_fino_mean_agroindustrial(df)`**: Calcula el fino agroindustrial promedio.
+- **`filter_con_adiflow(df)`**: Filtra el DataFrame para solo registros con Adiflow ('Con Adiflow').
+- **`filter_sin_adiflow(df)`**: Filtra el DataFrame para solo registros sin Adiflow ('Sin Adiflow').
 
-**CÁLCULO DEL SACKOFF (PÉRDIDA DE PRODUCCIÓN):**
-El sackoff se calcula automáticamente en la función `compute_metric_by_group` de la siguiente manera:
+**IMPORTANTE:**
+- Para calcular cualquier KPI, SIEMPRE filtra el DataFrame según corresponda (por fechas, aditivos, productos, etc.) y pásalo a la función correspondiente.
+- Los valores válidos para la columna `tiene_adiflow` son **'Con Adiflow'** y **'Sin Adiflow'** (no uses 0/1).
+- NO implementes la lógica de los KPIs manualmente, usa siempre las funciones centralizadas.
 
+## Cálculo de Sackoff (Pérdida de Producción)
+
+**SIEMPRE usa la función `compute_metric_sackoff` importada desde `utils.production_metrics` para calcular el sackoff.**
+
+### Ejemplo correcto para calcular el sackoff de un periodo, producto o filtro:
 ```python
-# 1. Agregación por grupo (mes, producto, planta, etc.)
-df_group = df.groupby(cols).agg(
-    total_toneladas_a_producir=("toneladas_a_producir", "sum"),
-    total_toneladas_materia_prima_consumida=("toneladas_materia_prima_consumida", "sum"),
-    total_toneladas_anuladas=("toneladas_anuladas", "sum"),
-    total_toneladas_producidas=("toneladas_producidas", "sum"),
-    cantidad_orden_produccion=("orden_produccion", "nunique"),
-    
-    # Métricas de calidad QA (promedios)
-    pdi_mean_agroindustrial=('durabilidad_pct_qa_agroindustrial', "mean"),
-    dureza_mean_agroindustrial=('dureza_qa_agroindustrial', "mean"),
-    fino_mean_agroindustrial=('finos_pct_qa_agroindustrial', "mean"),
-    
-    # Métricas de calidad Producción (medianas)
-    pdi_mean_prod=('durabilidad_pct_produccion', "median"),
-    dureza_mean_prod=('dureza_produccion', "median"),
-    fino_mean_prod=('finos_pct_produccion', "median"),
-    
-    # Controles de proceso (medianas)
-    aceite_postengrase_mean=('control_aceite_postengrase_pct', "median"),
-    presion_distribuidor_mean=('control_presion_distribuidor_psi', "median"),
-    carga_alimentador_mean=('control_carga_alimentador_pct', 'median'),
-    presion_acondicionador_mean=('control_presion_acondicionador_psi', "median"),
-).reset_index()
-
-# 2. Cálculo de la diferencia de toneladas (pérdida)
-df_group["diferencia_toneladas"] = (df_group["total_toneladas_a_producir"] - 
-                                   df_group["total_toneladas_producidas"] - 
-                                   df_group["total_toneladas_anuladas"])
-
-# 3. Cálculo del sackoff como porcentaje
-df_group["sackoff"] = df_group["diferencia_toneladas"].div(df_group["total_toneladas_producidas"]) * 100
+from utils.production_metrics import compute_metric_sackoff
+# Filtrar el DataFrame según el periodo, producto, aditivo, etc.
+df_junio = produccion_aliar[produccion_aliar['fecha_produccion'].dt.month == 6]
+sackoff_junio = compute_metric_sackoff(df_junio)
 ```
 
-**IMPORTANTE:** Para calcular el sackoff de un grupo (semana, mes, etc.), SIEMPRE usa la función `compute_metric_by_group` que ya incluye este cálculo correcto. NO calcules el sackoff como promedio de sackoffs individuales, sino como:
-```
-Sackoff del grupo = (Diferencia total del grupo / Toneladas producidas total del grupo) * 100
-```
+- **No implementes la lógica manualmente.**
+- **No uses ninguna función obsoleta ni lógica de promedio de sackoffs individuales.**
+- **No uses compute_metric_by_group.**
+- Si la función no está disponible, muestra un mensaje claro de error y sugiere el import correcto.
+
+**IMPORTANTE:**
+- Para calcular cualquier KPI de sackoff, filtra el DataFrame según corresponda y pásalo a la función `compute_metric_sackoff`.
+- Los valores válidos para la columna `tiene_adiflow` son 'Con Adiflow' y 'Sin Adiflow'.
 
 **INTERPRETACIÓN DEL SACKOFF:**
 - **Sackoff = 0%**: Producción perfecta (sin pérdidas)
@@ -247,17 +226,7 @@ if columnas_faltantes:
 else:
     print("Todas las columnas requeridas están disponibles")
 
-# 3. Uso seguro de funciones
-try:
-    if "mes_produccion" in produccion_aliar.columns:
-        metricas = compute_metric_by_group(produccion_aliar, "mes_produccion")
-        print(f"Métricas calculadas: {{len(metricas)}} registros")
-        print("Primeras métricas:")
-        print(metricas.head())
-    else:
-        print("No se puede calcular métricas: columna 'mes_produccion' no encontrada")
-except Exception as e:
-    print(f"Error al calcular métricas: {{e}}")
+
 
 # 4. Verificación de resultados
 if 'metricas' in locals() and len(metricas) > 0:
