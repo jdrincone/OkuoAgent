@@ -65,7 +65,7 @@ def main():
     db_available, db_service = check_database_service()
     
     # Crear pestañas
-    tab1, tab2 = st.tabs(["💬 Dashboard Inteligente", "🔧 Depuración"])
+    tab1, tab2, tab3 = st.tabs(["💬 Dashboard Inteligente", "📊 Informe Detallado", "🔧 Depuración"])
     
     with tab1:
         # Renderizar tarjeta de introducción
@@ -103,6 +103,11 @@ def main():
             render_database_error_message()
     
     with tab2:
+        # Renderizar pestaña de informe detallado
+        from streamlit_apps.components.detailed_report import render_detailed_report_page
+        render_detailed_report_page()
+    
+    with tab3:
         # Renderizar pestaña de depuración
         render_debug_tab()
 
