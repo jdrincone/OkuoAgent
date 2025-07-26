@@ -241,7 +241,7 @@ def complete_python_task(
     
     logger.info(f"Executing Python task for session {session_info['session_id']} with {len(python_code)} characters")
     
-    # Use the original code without validation
+    # Use the original code without preprocessing
     processed_code = python_code
     
     # Create safe execution environment
