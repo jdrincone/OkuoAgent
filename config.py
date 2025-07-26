@@ -32,13 +32,13 @@ class Config:
     MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "100"))
     
     # Database Configuration
-    DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "postgresql")  # postgresql, mysql, sqlite
-    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "localhost")
-    DATABASE_PORT: str = os.getenv("DATABASE_PORT", "5432")
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "okuoagent")
-    DATABASE_USER: str = os.getenv("DATABASE_USER", "")
-    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "postgresql")
+    DATABASE_HOST: str = os.getenv("DATABASE_HOST")
+    DATABASE_PORT: str = os.getenv("DATABASE_PORT")
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME")
+    DATABASE_USER: str = os.getenv("DATABASE_USER")
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD")
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
     
     # Corporate Colors Configuration
     CORPORATE_COLORS: list = [
@@ -96,10 +96,6 @@ class Config:
         
         if cls.DATABASE_TYPE == "postgresql":
             return f"postgresql://{cls.DATABASE_USER}:{cls.DATABASE_PASSWORD}@{cls.DATABASE_HOST}:{cls.DATABASE_PORT}/{cls.DATABASE_NAME}"
-        elif cls.DATABASE_TYPE == "mysql":
-            return f"mysql+pymysql://{cls.DATABASE_USER}:{cls.DATABASE_PASSWORD}@{cls.DATABASE_HOST}:{cls.DATABASE_PORT}/{cls.DATABASE_NAME}"
-        elif cls.DATABASE_TYPE == "sqlite":
-            return f"sqlite:///{cls.DATABASE_NAME}.db"
         else:
             raise ValueError(f"Unsupported database type: {cls.DATABASE_TYPE}")
 

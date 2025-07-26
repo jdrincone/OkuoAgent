@@ -1,6 +1,4 @@
 from langchain_core.tools import tool
-from langchain_experimental.utilities import PythonREPL
-
 from langchain_core.messages import AIMessage
 from typing import Annotated, Tuple
 from langgraph.prebuilt import InjectedState
@@ -39,7 +37,6 @@ except ImportError as e:
     logger.warning(f"Could not import production metrics: {e}")
     PRODUCTION_METRICS_AVAILABLE = False
 
-repl = PythonREPL()
 
 # Thread-local storage for session isolation
 _thread_local = threading.local()
