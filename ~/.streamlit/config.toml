@@ -1,0 +1,37 @@
+[server]
+# Configuración del servidor
+port = 8502
+enableCORS = false
+enableXsrfProtection = false
+
+[logger]
+# Configuración de logging
+level = "info"
+
+[client]
+# Configuración del cliente
+showErrorDetails = false
+
+[runner]
+# Configuración del runner
+magicEnabled = true
+
+[theme]
+# Configuración del tema
+primaryColor = "#1C8074"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+
+[watcher]
+# Configuración del file watcher
+# Ignorar directorios __pycache__
+ignorePatterns = [
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/.env/**"
+] 
