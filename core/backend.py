@@ -1,10 +1,9 @@
 from langchain_core.messages import HumanMessage
-from typing import List
-from dataclasses import dataclass
+from typing import Dict
+import pandas as pd
 from langgraph.graph import StateGraph
 from core.graph.state import AgentState
 from core.graph.nodes import call_model, call_tools, route_to_tools
-from core.data_models import InputData
 from config import config
 from utils.logger import logger
 import uuid
@@ -30,14 +29,14 @@ class PythonChatbot:
         workflow.set_entry_point('agent')
         return workflow.compile()
     
-    def user_sent_message(self, user_query, input_data: List[InputData]):
-        logger.info(f"Session {self.session_id}: Processing user message with {len(input_data)} datasets")
+    def user_sent_message(self, user_query, dataframes: Dict[str, pd.DataFrame]):
+        logger.info(f"Session {self.session_id}: Processing user message with {len(dataframes)} datasets")
         
         starting_image_paths_set = set(sum(self.output_image_paths.values(), []))
         input_state = {
             "messages": self.chat_history + [HumanMessage(content=user_query)],
             "output_image_paths": list(starting_image_paths_set),
-            "input_data": input_data,
+            "dataframes": dataframes,
         }
 
         try:

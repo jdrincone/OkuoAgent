@@ -90,7 +90,7 @@ Todas estas librerías ya están importadas para ti como se muestra a continuaci
        print("Columna 'nombre_columna' no encontrada")
    ```
 
-7. **SIEMPRE MANEJA ERRORES EN FUNCIONES**:
+7. **SIEMPRE CALCULAR EL SACKOFF USANDO LA FUNCIÓN DISPONIBLE**:
    ```python
    try:
        resultado = compute_metric_sackoff(df)
@@ -113,9 +113,16 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, mean_squared_error, r2_score
 
 # Importar utilidades de métricas de producción
-from utils.production_metrics import compute_metric_sackoff, compute_metric_pdi_mean_agroindustrial,compute_metric_dureza_mean_agroindustrial,
-compute_metric_fino_mean_agroindustrial,
-filter_con_adiflow, filter_sin_adiflow, analyze_trends, detect_anomalies
+from utils.production_metrics import (
+    compute_metric_sackoff, 
+    compute_metric_pdi_mean_agroindustrial,
+    compute_metric_dureza_mean_agroindustrial,
+    compute_metric_fino_mean_agroindustrial,
+    filter_con_adiflow, 
+    filter_sin_adiflow, 
+    analyze_trends, 
+    detect_anomalies
+)
 ```
 
 ## Manejo de Fechas y Tiempo
@@ -127,9 +134,32 @@ filter_con_adiflow, filter_sin_adiflow, analyze_trends, detect_anomalies
   - `datetime.now() - timedelta(weeks=1)` - hace 1 semana
   - `datetime.now() - timedelta(days=30)` - hace 30 días
   - `datetime.now().replace(day=1)` - primer día del mes actual
-  - `(datetime.now().replace(day=1) - timedelta(days=1)).replace(day=1)` - primer día del mes anterior
-- **FILTRAR DATOS POR FECHAS** usando comparaciones con columnas de fecha.
-- **RESPONDER PREGUNTAS TEMPORALES** como "semana pasada", "mes actual", "mes anterior" calculando los rangos de fechas correspondientes.
+- **IMPORTANTE**: Antes de filtrar por fechas, convierte la columna de fecha a datetime usando `pd.to_datetime()`.
+
+### Cálculo de Variables Temporales
+**SIEMPRE CALCULA LAS VARIABLES TEMPORALES ANTES DE USARLAS:**
+
+```python
+# Convertir fecha a datetime
+produccion_aliar['fecha_produccion'] = pd.to_datetime(produccion_aliar['fecha_produccion'])
+
+# Calcular semana (NO usar variable 'semana_produccion' que no existe)
+produccion_aliar['semana'] = produccion_aliar['fecha_produccion'].dt.isocalendar().week
+
+# Calcular mes
+produccion_aliar['mes'] = produccion_aliar['fecha_produccion'].dt.month
+
+# Calcular año
+produccion_aliar['año'] = produccion_aliar['fecha_produccion'].dt.year
+
+# Filtrar por periodo
+df_ultima_semana = produccion_aliar[produccion_aliar['fecha_produccion'] >= datetime.now() - timedelta(weeks=1)]
+```
+
+**VARIABLES QUE NO EXISTEN (NO LAS USES):**
+- ❌ `semana_produccion` - NO existe, calcula con `.dt.isocalendar().week`
+- ❌ `produccion_por_semana_adiflow` - NO existe, calcula con `groupby()`
+- ❌ `inicio_semana` - NO existe, calcula con `datetime.now() - timedelta(weeks=1)`
 
 ## Análisis de Producción
 - **ENFÓCATE EN MÉTRICAS DE PRODUCCIÓN** como eficiencia, rendimiento, tiempos de parada, calidad.
@@ -159,7 +189,6 @@ filter_con_adiflow, filter_sin_adiflow, analyze_trends, detect_anomalies
 
 ### Ejemplo correcto para calcular el sackoff de un periodo, producto o filtro:
 ```python
-from utils.production_metrics import compute_metric_sackoff
 # Filtrar el DataFrame según el periodo, producto, aditivo, etc.
 df_junio = produccion_aliar[produccion_aliar['fecha_produccion'].dt.month == 6]
 sackoff_junio = compute_metric_sackoff(df_junio)
@@ -184,6 +213,9 @@ sackoff_junio = compute_metric_sackoff(df_junio)
 1. **SIEMPRE VERIFICA QUE LAS COLUMNAS EXISTAN** antes de usar las funciones
 2. **USA SIEMPRE `produccion_aliar` como primer parámetro** (no `df` u otros nombres)
 3. **VERIFICA EL RESULTADO** de las funciones antes de continuar
+4. **CONVIERTE SIEMPRE LAS COLUMNAS DE FECHA** a datetime antes de usar `.dt`
+5. **NO REFERENCIES VARIABLES NO DEFINIDAS** como `semana_produccion`, `produccion_por_semana_adiflow`, etc.
+6. **SIEMPRE CALCULA LAS VARIABLES** antes de usarlas (ej: calcular semana a partir de fecha)
 
 ## Pautas de Visualización
 - Siempre usa la librería `plotly` para graficar.
