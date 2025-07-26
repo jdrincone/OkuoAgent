@@ -306,6 +306,10 @@ def get_session_info() -> dict:
 
 def create_safe_execution_environment() -> dict:
     """Crea un entorno de ejecución seguro con todas las importaciones y utilidades necesarias."""
+    # Configure Plotly to not open new tabs
+    import plotly.io as pio
+    pio.renderers.default = "notebook"  # This prevents opening new tabs
+    
     env = {
         # Librerías estándar de análisis de datos
         'pd': pd,
@@ -378,8 +382,12 @@ def create_safe_execution_environment() -> dict:
 plotly_saving_code = f"""import pickle
 import uuid
 import plotly
+import plotly.io as pio
 import pandas as pd
 import numpy as np
+
+# Configure Plotly to not open new tabs
+pio.renderers.default = "notebook"
 
 def clean_figure_for_pickle(fig):
     \"\"\"Clean figure data to ensure it's pickle-serializable\"\"\"
