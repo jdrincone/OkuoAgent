@@ -59,6 +59,13 @@ class Config:
         "font": "sans serif"
     }
     
+    # Session Management Configuration
+    SESSION_TTL_HOURS: int = int(os.getenv("SESSION_TTL_HOURS", "24"))  # Tiempo de vida de sesión en horas
+    MAX_MEMORY_PER_SESSION_MB: int = int(os.getenv("MAX_MEMORY_PER_SESSION_MB", "100"))  # Límite de memoria por sesión en MB
+    MAX_VARIABLES_PER_SESSION: int = int(os.getenv("MAX_VARIABLES_PER_SESSION", "50"))  # Máximo número de variables por sesión
+    MAX_IMAGES_PER_SESSION: int = int(os.getenv("MAX_IMAGES_PER_SESSION", "20"))  # Máximo número de imágenes por sesión
+    CLEANUP_INTERVAL_SECONDS: int = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "691200"))  # Intervalo de limpieza en segundos (8 días)
+    
     @classmethod
     def validate_config(cls) -> bool:
         """Validate that all required configuration is present."""
