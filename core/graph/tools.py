@@ -19,6 +19,26 @@ from datetime import datetime, timedelta
 from config import config
 from utils.logger import logger
 
+
+# Importaciones automáticas para el entorno de ejecución
+try:
+    from utils.production_metrics import (
+        compute_metric_sackoff,
+        compute_metric_pdi_mean_agroindustrial,
+        compute_metric_dureza_mean_agroindustrial,
+        compute_metric_fino_mean_agroindustrial,
+        compute_metric_diferencia_toneladas,
+        filter_con_adiflow,
+        filter_sin_adiflow,
+        calculate_kpis,
+        analyze_trends,
+        detect_anomalies
+    )
+    PRODUCTION_METRICS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Could not import production metrics: {e}")
+    PRODUCTION_METRICS_AVAILABLE = False
+
 repl = PythonREPL()
 
 # Thread-local storage for session isolation
@@ -61,6 +81,79 @@ def get_session_info() -> dict:
         }
     return {'session_id': session_id}
 
+def create_safe_execution_environment() -> dict:
+    """Create a safe execution environment with all necessary imports and utilities."""
+    env = {
+        # Librerías estándar de análisis de datos
+        'pd': pd,
+        'np': __import__('numpy'),
+        'plt': __import__('matplotlib.pyplot'),
+        'px': px,
+        'go': go,
+        'sklearn': sklearn,
+        'datetime': datetime,
+        'timedelta': timedelta,
+        'os': __import__('os'),
+        'uuid': __import__('uuid'),
+        
+        # Funciones de utilidad para fechas
+        'pd_to_datetime': pd.to_datetime,
+        'pd_date_range': pd.date_range,
+    }
+    
+    # Agregar funciones de métricas si están disponibles
+    if PRODUCTION_METRICS_AVAILABLE:
+        env.update({
+            'compute_metric_sackoff': compute_metric_sackoff,
+            'compute_metric_pdi_mean_agroindustrial': compute_metric_pdi_mean_agroindustrial,
+            'compute_metric_dureza_mean_agroindustrial': compute_metric_dureza_mean_agroindustrial,
+            'compute_metric_fino_mean_agroindustrial': compute_metric_fino_mean_agroindustrial,
+            'compute_metric_diferencia_toneladas': compute_metric_diferencia_toneladas,
+            'filter_con_adiflow': filter_con_adiflow,
+            'filter_sin_adiflow': filter_sin_adiflow,
+            'calculate_kpis': calculate_kpis,
+            'analyze_trends': analyze_trends,
+            'detect_anomalies': detect_anomalies,
+        })
+    
+    # Funciones de utilidad para manejo de fechas
+    def safe_date_conversion(series, **kwargs):
+        """Safely convert series to datetime with error handling."""
+        try:
+            return pd.to_datetime(series, **kwargs)
+        except Exception as e:
+            logger.warning(f"Date conversion error: {e}")
+            return series
+    
+    def safe_date_filter(df, date_column, start_date=None, end_date=None):
+        """Safely filter DataFrame by date range."""
+        try:
+            if date_column not in df.columns:
+                logger.warning(f"Date column '{date_column}' not found in DataFrame")
+                return df
+            
+            # Ensure date column is datetime
+            if not pd.api.types.is_datetime64_any_dtype(df[date_column]):
+                df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+            
+            # Apply filters
+            if start_date:
+                df = df[df[date_column] >= pd.to_datetime(start_date)]
+            if end_date:
+                df = df[df[date_column] <= pd.to_datetime(end_date)]
+            
+            return df
+        except Exception as e:
+            logger.error(f"Date filtering error: {e}")
+            return df
+    
+    env.update({
+        'safe_date_conversion': safe_date_conversion,
+        'safe_date_filter': safe_date_filter,
+    })
+    
+    return env
+
 plotly_saving_code = f"""import pickle
 import uuid
 import plotly
@@ -98,22 +191,31 @@ def clean_figure_for_pickle(fig):
                 elif isinstance(trace.text, (list, np.ndarray)):
                     trace.text = [str(t) if hasattr(t, 'strftime') or isinstance(t, pd.Period) else t for t in trace.text]
             
-            # Clean hover data if present
-            if hasattr(trace, 'hovertext') and trace.hovertext is not None:
-                if isinstance(trace.hovertext, pd.Series):
-                    trace.hovertext = trace.hovertext.astype(str)
-                elif isinstance(trace.hovertext, (list, np.ndarray)):
-                    trace.hovertext = [str(h) if hasattr(h, 'strftime') or isinstance(h, pd.Period) else h for h in trace.hovertext]
+            # Clean customdata if present
+            if hasattr(trace, 'customdata') and trace.customdata is not None:
+                if isinstance(trace.customdata, pd.Series):
+                    trace.customdata = trace.customdata.astype(str)
+                elif isinstance(trace.customdata, (list, np.ndarray)):
+                    trace.customdata = [str(cd) if hasattr(cd, 'strftime') or isinstance(cd, pd.Period) else cd for cd in trace.customdata]
     
     return fig
 
-for figure in plotly_figures:
+# Save each figure in plotly_figures list
+for i, fig in enumerate(plotly_figures):
     try:
-        # Clean the figure to ensure it's serializable
-        clean_figure = clean_figure_for_pickle(figure)
-        pickle_filename = f"{config.IMAGES_DIR}/{{uuid.uuid4()}}.pickle"
-        with open(pickle_filename, 'wb') as f:
-            pickle.dump(clean_figure, f)
+        # Clean the figure for pickle serialization
+        clean_fig = clean_figure_for_pickle(fig)
+        
+        # Generate unique filename
+        filename = f"figure_{{uuid.uuid4()}}.pkl"
+        filepath = os.path.join("{config.IMAGES_DIR}", filename)
+        
+        # Save figure
+        with open(filepath, 'wb') as f:
+            pickle.dump(clean_fig, f)
+        
+        print(f"Figure {{i+1}} saved as {{filename}}")
+        
     except Exception as e:
         print(f"Error saving figure: {{e}}")
         continue
@@ -138,6 +240,12 @@ def complete_python_task(
     session_info = get_session_info()
     
     logger.info(f"Executing Python task for session {session_info['session_id']} with {len(python_code)} characters")
+    
+    # Use the original code without validation
+    processed_code = python_code
+    
+    # Create safe execution environment
+    exec_globals = create_safe_execution_environment()
     
     current_variables = graph_state["current_variables"] if "current_variables" in graph_state else {}
     for input_dataset in graph_state["input_data"]:
@@ -168,16 +276,17 @@ def complete_python_task(
         old_stdout = sys.stdout
         sys.stdout = StringIO()
 
-        # Execute the code and capture the result
-        exec_globals = globals().copy()
+        # Update execution environment with session variables and data
         exec_globals.update(persistent_vars)  # Session-specific variables
         exec_globals.update(current_variables)
         exec_globals.update({"plotly_figures": []})
 
-        exec(python_code, exec_globals)
+        # Execute the processed code
+        exec(processed_code, exec_globals)
         
         # Update session-specific persistent variables
-        new_vars = {k: v for k, v in exec_globals.items() if k not in globals()}
+        new_vars = {k: v for k, v in exec_globals.items() 
+                   if k not in globals() and not k.startswith('_')}
         persistent_vars.update(new_vars)
         
         # Log variable count for monitoring
@@ -191,7 +300,7 @@ def complete_python_task(
         sys.stdout = old_stdout
 
         updated_state = {
-            "intermediate_outputs": [{"thought": thought, "code": python_code, "output": output}],
+            "intermediate_outputs": [{"thought": thought, "code": processed_code, "output": output}],
             "current_variables": persistent_vars  # Session-specific variables
         }
 
@@ -213,5 +322,8 @@ def complete_python_task(
         return output, updated_state
         
     except Exception as e:
+        # Simple error handling
+        user_friendly_error = f"Error de ejecución: {str(e)}"
+        
         logger.error(f"Code execution error for session {session_info['session_id']}: {str(e)}")
-        return str(e), {"intermediate_outputs": [{"thought": thought, "code": python_code, "output": str(e)}]}
+        return user_friendly_error, {"intermediate_outputs": [{"thought": thought, "code": processed_code, "output": user_friendly_error}]}
