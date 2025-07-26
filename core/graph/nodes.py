@@ -57,6 +57,16 @@ def create_data_summary(state: AgentState) -> str:
                     summary += f"\n\nColumnas disponibles en {table_name}:"
                     for col_name, col_desc in column_info.items():
                         summary += f"\n- {col_name}: {col_desc}"
+                
+                # Add data quality information
+                if 'fecha_produccion' in df.columns:
+                    summary += f"\n\nRango de fechas: {df['fecha_produccion'].min()} a {df['fecha_produccion'].max()}"
+                
+                # Add sample data types
+                summary += f"\n\nTipos de datos principales:"
+                for col in df.columns[:10]:  # First 10 columns
+                    summary += f"\n- {col}: {df[col].dtype}"
+                    
             except Exception as e:
                 logger.warning(f"Could not load column info: {str(e)}")
     
@@ -64,6 +74,14 @@ def create_data_summary(state: AgentState) -> str:
         remaining_variables = [v for v in state["current_variables"] if v not in variables]
         for v in remaining_variables:
             summary += f"\n\nVariable: {v}"
+    
+    # Add critical warnings about common issues
+    summary += f"\n\n⚠️ ADVERTENCIAS IMPORTANTES:"
+    summary += f"\n- SIEMPRE verifica que las variables estén definidas antes de usarlas"
+    summary += f"\n- Para fechas, usa pd.to_datetime() y verifica el formato"
+    summary += f"\n- Para filtros, usa .copy() para evitar SettingWithCopyWarning"
+    summary += f"\n- Define variables locales antes de usarlas en cálculos"
+    
     return summary
 
 def route_to_tools(
@@ -113,8 +131,17 @@ def call_model(state: AgentState):
         return {"messages": [llm_outputs], "intermediate_outputs": [current_data_message.content]}
     except Exception as e:
         logger.error(f"Error in call_model: {str(e)}")
-        # Return a fallback response to prevent infinite loops
-        fallback_message = AIMessage(content="I encountered an error processing your request. Please try rephrasing your question.")
+        # Return a more helpful fallback response
+        error_content = f"""I encountered an error processing your request: {str(e)}
+
+Please try:
+1. Rephrasing your question more simply
+2. Asking for specific data analysis (e.g., "show me production trends")
+3. Requesting basic statistics first
+
+If the problem persists, please check the data format and try again."""
+        
+        fallback_message = AIMessage(content=error_content)
         return {"messages": [fallback_message], "intermediate_outputs": [f"Error: {str(e)}"]}
 
 def call_tools(state: AgentState):
@@ -141,9 +168,19 @@ def call_tools(state: AgentState):
         for tc, response in zip(last_message.tool_calls, responses):
             if isinstance(response, Exception):
                 logger.error(f"Tool execution error: {str(response)}")
-                # Create error message instead of raising
+                # Create more helpful error message
+                error_msg = f"""Error executing {tc['name']}: {str(response)}
+
+Common solutions:
+1. Check variable names - make sure they're defined
+2. For date operations, use pd.to_datetime() first
+3. For DataFrame operations, use .copy() to avoid warnings
+4. Define all variables before using them in calculations
+
+Please try rephrasing your request or ask for simpler analysis first."""
+                
                 tool_messages.append(ToolMessage(
-                    content=f"Error executing tool: {str(response)}",
+                    content=error_msg,
                     name=tc["name"],
                     tool_call_id=tc["id"]
                 ))
