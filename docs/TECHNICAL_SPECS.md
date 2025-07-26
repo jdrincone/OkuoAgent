@@ -56,7 +56,6 @@
 #### 2. Backend (LangGraph)
 - **Framework**: LangGraph 0.2+
 - **Patrón**: State Machine
-- **Herramientas**: Python REPL
 - **Memoria**: Thread-local storage
 
 #### 3. Base de Datos
@@ -511,40 +510,7 @@ def health_check() -> Dict[str, Any]:
     }
 ```
 
-#### Métricas del Sistema
-```python
-def get_system_metrics() -> Dict[str, Any]:
-    """Obtiene métricas del sistema."""
-    return {
-        'cpu_usage': psutil.cpu_percent(),
-        'memory_usage': psutil.virtual_memory().percent,
-        'disk_usage': psutil.disk_usage('/').percent,
-        'active_sessions': len(get_active_sessions()),
-        'total_requests': get_total_requests(),
-        'error_rate': get_error_rate()
-    }
-```
 
-### Alertas
-
-#### Configuración de Alertas
-```python
-ALERT_THRESHOLDS = {
-    'cpu_usage': 80,      # % CPU
-    'memory_usage': 85,   # % Memoria
-    'disk_usage': 90,     # % Disco
-    'error_rate': 5,      # % Errores
-    'response_time': 10   # segundos
-}
-
-def check_alerts():
-    """Verifica si se deben enviar alertas."""
-    metrics = get_system_metrics()
-    
-    for metric, threshold in ALERT_THRESHOLDS.items():
-        if metrics[metric] > threshold:
-            send_alert(f"High {metric}: {metrics[metric]}%")
-```
 
 ## 🔗 Integración
 
@@ -582,59 +548,4 @@ def webhook_handler(event_type: str, data: Dict):
         process_alert(data)
 ```
 
-### Integración con Sistemas Externos
-
-#### PostgreSQL Triggers
-```sql
--- Trigger para notificar cambios en datos
-CREATE OR REPLACE FUNCTION notify_data_change()
-RETURNS TRIGGER AS $$
-BEGIN
-    PERFORM pg_notify('data_change', json_build_object(
-        'table', TG_TABLE_NAME,
-        'operation', TG_OP,
-        'timestamp', NOW()
-    )::text);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER data_change_trigger
-    AFTER INSERT OR UPDATE OR DELETE ON produccion_aliar
-    FOR EACH ROW EXECUTE FUNCTION notify_data_change();
-```
-
-#### Exportación de Datos
-```python
-def export_data(format: str, filters: Dict) -> bytes:
-    """Exporta datos en diferentes formatos."""
-    data = get_filtered_data(filters)
-    
-    if format == 'csv':
-        return data.to_csv(index=False).encode('utf-8')
-    elif format == 'excel':
-        return data.to_excel(index=False)
-    elif format == 'json':
-        return data.to_json(orient='records').encode('utf-8')
-```
-
-### Configuración de Integración
-
-#### Configuración de Webhooks
-```env
-WEBHOOK_URL=https://api.external-system.com/webhook
-WEBHOOK_SECRET=your_webhook_secret
-WEBHOOK_EVENTS=data_update,config_change,alert
-```
-
-#### Configuración de Exportación
-```env
-EXPORT_ENABLED=true
-EXPORT_FORMATS=csv,excel,json
-EXPORT_MAX_ROWS=10000
-EXPORT_RETENTION_DAYS=30
-```
-
 ---
-
-**Documentación Técnica Completa** - Para más detalles, consulta la documentación de la API o contacta al equipo de desarrollo. 

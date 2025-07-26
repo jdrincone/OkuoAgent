@@ -190,11 +190,11 @@ Antes de empezar, asegúrate de que:
 ##### Gráficos de Barras
 ```
 ┌─────────────────────────────────────┐
-│ Eficiencia por Planta               │
+│ Sackoff  por Dieta                  │
 │                                     │
-│ Planta A: ██████████ 95%            │
-│ Planta B: ████████   80%            │
-│ Planta C: ████████████ 100%         │
+│  A: ██████████ 95%                  │
+│  B: ████████   80%                  │
+│  C: ████████████ 100%               │
 └─────────────────────────────────────┘
 ```
 **Uso**: Comparar categorías

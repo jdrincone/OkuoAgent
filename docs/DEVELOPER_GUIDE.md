@@ -199,22 +199,6 @@ pip install pytest black flake8 mypy
 pre-commit install
 ```
 
-### Variables de Entorno de Desarrollo
-
-```env
-# Desarrollo
-ENVIRONMENT=development
-DEBUG=true
-LOG_LEVEL=DEBUG
-
-# Base de datos de desarrollo
-DATABASE_URL=postgresql://dev_user:dev_pass@localhost:5432/aliar_dev
-
-# OpenAI para desarrollo
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TEMPERATURE=0.1
-```
-
 ### Comandos de Desarrollo
 
 ```bash
@@ -442,26 +426,7 @@ pytest tests/unit/test_production_metrics.py
 pytest -n auto
 ```
 
-## 🐛 Debugging
 
-### Logging Estratégico
-
-```python
-# utils/logger.py
-import logging
-
-logger = logging.getLogger("OkuoAgent")
-
-# Configuración de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/okuoagent.log'),
-        logging.StreamHandler()
-    ]
-)
-```
 
 ### Debugging de Sesiones
 
@@ -505,139 +470,3 @@ import pdb; pdb.set_trace()
 ```bash
 tail -f logs/okuoagent.log | grep "ERROR\|WARNING"
 ```
-
-## 🚀 Deployment
-
-### Configuración de Producción
-
-```env
-# Producción
-ENVIRONMENT=production
-DEBUG=false
-LOG_LEVEL=WARNING
-
-# Base de datos de producción
-DATABASE_URL=postgresql://prod_user:prod_pass@prod_host:5432/aliar_prod
-
-# OpenAI para producción
-OPENAI_MODEL=gpt-4o
-OPENAI_TEMPERATURE=0.1
-```
-
-### Docker Deployment
-
-```dockerfile
-# Dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8502
-
-CMD ["streamlit", "run", "run_app.py", "--server.port=8502", "--server.address=0.0.0.0"]
-```
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  okuoagent:
-    build: .
-    ports:
-      - "8502:8502"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - ./logs:/app/logs
-      - ./images:/app/images
-```
-
-### CI/CD Pipeline
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy OkuoAgent
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: pytest
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to production
-        run: |
-          # Scripts de deployment
-```
-
-### Monitoreo de Producción
-
-1. **Health Checks**:
-```python
-# health_check.py
-def check_system_health():
-    checks = {
-        "database": check_database_connection(),
-        "openai": check_openai_connection(),
-        "memory": check_memory_usage(),
-        "disk": check_disk_space()
-    }
-    return all(checks.values())
-```
-
-2. **Métricas de Performance**:
-```python
-# metrics.py
-import time
-
-def measure_response_time(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        logger.info(f"{func.__name__} took {end - start:.2f} seconds")
-        return result
-    return wrapper
-```
-
-## 📚 Recursos Adicionales
-
-### Documentación Externa
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-
-### Herramientas Recomendadas
-- **IDE**: VS Code con extensiones Python
-- **Debugging**: pdb, ipdb, PyCharm Debugger
-- **Profiling**: cProfile, memory_profiler
-- **Testing**: pytest, coverage, pytest-cov
-
-### Convenciones del Proyecto
-- **Commits**: Conventional Commits
-- **Branches**: feature/, bugfix/, hotfix/
-- **Code Style**: Black, flake8, mypy
-- **Documentation**: Google style docstrings
-
----
-
-**¿Necesitas ayuda?** Contacta al equipo de desarrollo o crea un issue en GitHub. 
