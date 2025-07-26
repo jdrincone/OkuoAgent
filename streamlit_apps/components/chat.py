@@ -9,7 +9,7 @@ import pickle
 import uuid
 import time
 from langchain_core.messages import HumanMessage, AIMessage
-from core.backend import PythonChatbot, InputData
+from core.backend import PythonChatbot
 from config import config
 from utils.logger import logger
 
@@ -30,22 +30,12 @@ def on_submit_user_query():
     """Función de envío de consulta del usuario."""
     try:
         user_query = st.session_state['user_input']
-        input_data_list = []
         
         # Always use produccion_aliar table
         if 'produccion_aliar' in st.session_state['database_data']:
             df = st.session_state['database_data']['produccion_aliar']
-            temp_path = os.path.join(config.UPLOADS_DIR, "produccion_aliar_temp.csv")
-            df.to_csv(temp_path, index=False)
-            input_data_list.append(InputData(
-                variable_name="produccion_aliar",
-                data_path=os.path.abspath(temp_path),
-                data_description="Datos de producción de Aliar - Información en tiempo real de la producción"
-            ))
-        
-        # Only proceed if we have data to analyze
-        if input_data_list:
-            st.session_state.visualisation_chatbot.user_sent_message(user_query, input_data=input_data_list)
+            # Pass DataFrame directly to the chatbot
+            st.session_state.visualisation_chatbot.user_sent_message(user_query, dataframes={"produccion_aliar": df})
         else:
             logger.warning("No valid data found for analysis")
             

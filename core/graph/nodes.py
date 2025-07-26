@@ -43,18 +43,18 @@ def create_data_summary(state: AgentState) -> str:
     except Exception as e:
         logger.warning(f"Could not load metadata: {str(e)}")
     
-    for d in state["input_data"]:
-        variables.append(d.variable_name)
-        summary += f"\n\nVariable: {d.variable_name}\n"
-        summary += f"Description: {d.data_description}"
+    for table_name, df in state["dataframes"].items():
+        variables.append(table_name)
+        summary += f"\n\nVariable: {table_name}\n"
+        summary += f"Shape: {df.shape[0]} filas, {df.shape[1]} columnas"
         
         # Add specific column information for produccion_aliar
-        if d.variable_name == "produccion_aliar":
+        if table_name == "produccion_aliar":
             try:
                 from services.metadata_service import metadata_service
                 column_info = metadata_service.get_column_info("produccion_aliar")
                 if column_info:
-                    summary += f"\n\nColumnas disponibles en {d.variable_name}:"
+                    summary += f"\n\nColumnas disponibles en {table_name}:"
                     for col_name, col_desc in column_info.items():
                         summary += f"\n- {col_name}: {col_desc}"
             except Exception as e:

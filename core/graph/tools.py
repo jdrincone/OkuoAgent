@@ -471,20 +471,11 @@ def complete_python_task(
     exec_globals = create_safe_execution_environment()
     
     current_variables = graph_state["current_variables"] if "current_variables" in graph_state else {}
-    for input_dataset in graph_state["input_data"]:
-        if input_dataset.variable_name not in current_variables:
-            try:
-                if input_dataset.data_path.endswith('.csv'):
-                    current_variables[input_dataset.variable_name] = pd.read_csv(input_dataset.data_path)
-                    logger.info(f"Loaded dataset {input_dataset.variable_name} with {len(current_variables[input_dataset.variable_name])} rows")
-                elif input_dataset.data_path.endswith('.json'):
-                    current_variables[input_dataset.variable_name] = pd.read_json(input_dataset.data_path)
-                    logger.info(f"Loaded dataset {input_dataset.variable_name} with {len(current_variables[input_dataset.variable_name])} rows")
-                else:
-                    raise ValueError(f"Unsupported file type: {input_dataset.data_path}")
-            except Exception as e:
-                logger.error(f"Error loading {input_dataset.data_path}: {str(e)}")
-                raise ValueError(f"Error loading {input_dataset.data_path}: {str(e)}")
+    # Load DataFrames directly from the state
+    for table_name, df in graph_state["dataframes"].items():
+        if table_name not in current_variables:
+            current_variables[table_name] = df
+            logger.info(f"Loaded dataset {table_name} with {len(df)} rows")
     
     if not os.path.exists(config.IMAGES_DIR):
         os.makedirs(config.IMAGES_DIR)
