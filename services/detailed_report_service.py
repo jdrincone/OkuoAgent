@@ -10,6 +10,10 @@ from typing import Dict, List, Optional, Tuple
 import json
 import os
 from services.kpi_service import KPIService
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+from config import config
 from utils.production_metrics import (
     compute_metric_sackoff,
     compute_metric_pdi_mean_agroindustrial,
@@ -257,6 +261,11 @@ class DetailedReportService:
         # Generar recomendaciones
         recomendaciones = self._generate_recommendations(month_comparisons, correlations)
         
+        # Generar gráficos con colores corporativos
+        production_chart = self._generate_production_chart()
+        quality_chart = self._generate_quality_chart()
+        efficiency_chart = self._generate_efficiency_chart()
+        
         # Construir el informe
         report = {
             "resumen_ejecutivo": self._generate_executive_summary(current_month_kpis, month_comparisons),
@@ -275,12 +284,17 @@ class DetailedReportService:
                 }
             },
             "correlaciones": correlations,
-                    "tendencias": {
-            "eficiencia_tendencia": month_comparisons['eficiencia']['tendencia'],
-            "calidad_tendencia": month_comparisons['durabilidad_promedio']['tendencia'],
-            "sackoff_tendencia": month_comparisons['sackoff_total']['tendencia']
-        },
-            "alertas": alertas
+            "tendencias": {
+                "eficiencia_tendencia": month_comparisons['eficiencia']['tendencia'],
+                "calidad_tendencia": month_comparisons['durabilidad_promedio']['tendencia'],
+                "sackoff_tendencia": month_comparisons['sackoff_total']['tendencia']
+            },
+            "alertas": alertas,
+            "graficos": {
+                "produccion": production_chart,
+                "calidad": quality_chart,
+                "eficiencia": efficiency_chart
+            }
         }
         
         return report
@@ -389,3 +403,189 @@ class DetailedReportService:
         recomendaciones.append("Implementar un sistema de alertas tempranas para desviaciones de calidad")
         
         return recomendaciones[:5]  # Limitar a 5 recomendaciones 
+    
+    def _generate_production_chart(self) -> go.Figure:
+        """Genera gráfico de tendencia de producción con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Agrupar por fecha y calcular producción diaria
+        daily_production = self.df.groupby('fecha_produccion')['toneladas_producidas'].sum().reset_index()
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=daily_production['fecha_produccion'],
+            y=daily_production['toneladas_producidas'],
+            mode='lines+markers',
+            name='Producción Diaria',
+            line=dict(
+                color='#1C8074',  # PANTONE 3295 U
+                width=3
+            ),
+            marker=dict(
+                color='#1C8074',
+                size=6
+            ),
+            fill='tonexty',
+            fillcolor='rgba(230, 236, 216, 0.5)'  # PANTONE 152-2 U con transparencia
+        ))
+        
+        fig.update_layout(
+            title={
+                'text': 'Tendencia de Producción Diaria',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Fecha de Producción',
+            yaxis_title='Toneladas Producidas',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            height=400
+        )
+        
+        return fig
+    
+    def _generate_quality_chart(self) -> go.Figure:
+        """Genera gráfico de métricas de calidad con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Calcular métricas de calidad promedio por producto
+        quality_metrics = self.df.groupby('nombre_producto').agg({
+            'durabilidad_pct_qa_agroindustrial': 'mean',
+            'dureza_qa_agroindustrial': 'mean',
+            'finos_pct_qa_agroindustrial': 'mean'
+        }).reset_index()
+        
+        fig = go.Figure()
+        
+        # Durabilidad
+        fig.add_trace(go.Bar(
+            x=quality_metrics['nombre_producto'],
+            y=quality_metrics['durabilidad_pct_qa_agroindustrial'],
+            name='Durabilidad',
+            marker_color='#1C8074',  # PANTONE 3295 U
+            opacity=0.8
+        ))
+        
+        # Dureza
+        fig.add_trace(go.Bar(
+            x=quality_metrics['nombre_producto'],
+            y=quality_metrics['dureza_qa_agroindustrial'],
+            name='Dureza',
+            marker_color='#1A494C',  # PANTONE 175-16 U
+            opacity=0.8
+        ))
+        
+        # Finos
+        fig.add_trace(go.Bar(
+            x=quality_metrics['nombre_producto'],
+            y=quality_metrics['finos_pct_qa_agroindustrial'],
+            name='Finos',
+            marker_color='#94AF92',  # PANTONE 7494 U
+            opacity=0.8
+        ))
+        
+        fig.update_layout(
+            title={
+                'text': 'Métricas de Calidad por Producto',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Producto',
+            yaxis_title='Porcentaje',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            barmode='group',
+            height=400
+        )
+        
+        return fig
+    
+    def _generate_efficiency_chart(self) -> go.Figure:
+        """Genera gráfico de eficiencia vs sackoff con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Calcular eficiencia por orden
+        self.df['eficiencia_orden'] = (self.df['toneladas_producidas'] / self.df['toneladas_a_producir'] * 100).fillna(0)
+        
+        fig = go.Figure()
+        
+        # Scatter plot de eficiencia vs sackoff
+        fig.add_trace(go.Scatter(
+            x=self.df['eficiencia_orden'],
+            y=self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df),
+            mode='markers',
+            name='Órdenes',
+            marker=dict(
+                color='#1C8074',  # PANTONE 3295 U
+                size=8,
+                opacity=0.7
+            ),
+            text=self.df['nombre_producto'],
+            hovertemplate='<b>%{text}</b><br>Eficiencia: %{x:.1f}%<br>Sackoff: %{y:.2f}%<extra></extra>'
+        ))
+        
+        # Línea de tendencia
+        if len(self.df) > 1:
+            z = np.polyfit(self.df['eficiencia_orden'], 
+                          self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df), 1)
+            p = np.poly1d(z)
+            fig.add_trace(go.Scatter(
+                x=self.df['eficiencia_orden'],
+                y=p(self.df['eficiencia_orden']),
+                mode='lines',
+                name='Tendencia',
+                line=dict(
+                    color='#1A494C',  # PANTONE 175-16 U
+                    width=2,
+                    dash='dash'
+                )
+            ))
+        
+        fig.update_layout(
+            title={
+                'text': 'Eficiencia vs Sackoff por Orden',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Eficiencia (%)',
+            yaxis_title='Sackoff (%)',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            height=400
+        )
+        
+        return fig 

@@ -173,48 +173,25 @@ def render_detailed_report_page():
         with st.expander("📈 Análisis de Producción", expanded=True):
             st.write(report['analisis_produccion'])
             
-            # Gráfico de tendencias si hay datos
-            if 'fecha_produccion' in df.columns:
-                df['fecha_produccion'] = pd.to_datetime(df['fecha_produccion'])
-                daily_production = df.groupby(df['fecha_produccion'].dt.date)['toneladas_producidas'].sum().reset_index()
-                
-                fig = px.line(daily_production, x='fecha_produccion', y='toneladas_producidas',
-                             title='Tendencia de Producción Diaria')
-                st.plotly_chart(fig, use_container_width=True)
+            # Mostrar gráfico de producción si está disponible
+            if 'graficos' in report and 'produccion' in report['graficos']:
+                st.plotly_chart(report['graficos']['produccion'], use_container_width=True)
         
         # Análisis de Calidad
         with st.expander("🔍 Análisis de Calidad", expanded=True):
             st.write(report['analisis_calidad'])
             
-            # Gráfico de calidad por producto
-            quality_by_product = df.groupby('nombre_producto').agg({
-                'durabilidad_pct_qa_agroindustrial': 'mean',
-                'dureza_qa_agroindustrial': 'mean',
-                'finos_pct_qa_agroindustrial': 'mean'
-            }).reset_index()
-            
-            if not quality_by_product.empty:
-                fig = px.bar(quality_by_product, x='nombre_producto', y='durabilidad_pct_qa_agroindustrial',
-                            title='Durabilidad Promedio por Producto')
-                st.plotly_chart(fig, use_container_width=True)
+            # Mostrar gráfico de calidad si está disponible
+            if 'graficos' in report and 'calidad' in report['graficos']:
+                st.plotly_chart(report['graficos']['calidad'], use_container_width=True)
         
         # Análisis de Eficiencia
         with st.expander("⚡ Análisis de Eficiencia", expanded=True):
             st.write(report['analisis_eficiencia'])
             
-            # Gráfico de eficiencia por planta
-            efficiency_by_plant = df.groupby('planta').agg({
-                'toneladas_producidas': 'sum',
-                'toneladas_a_producir': 'sum'
-            }).reset_index()
-            efficiency_by_plant['eficiencia'] = (
-                efficiency_by_plant['toneladas_producidas'] / 
-                efficiency_by_plant['toneladas_a_producir'] * 100
-            )
-            
-            fig = px.bar(efficiency_by_plant, x='planta', y='eficiencia',
-                        title='Eficiencia por Planta')
-            st.plotly_chart(fig, use_container_width=True)
+            # Mostrar gráfico de eficiencia si está disponible
+            if 'graficos' in report and 'eficiencia' in report['graficos']:
+                st.plotly_chart(report['graficos']['eficiencia'], use_container_width=True)
         
         # Comparaciones temporales
         if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:
@@ -293,109 +270,253 @@ def render_detailed_report_page():
                         st.info(alerta['mensaje'])
 
 def generate_pdf_report(report: Dict) -> bytes:
-    """Genera un PDF del informe detallado."""
+    """Genera un PDF del informe con colores corporativos e imágenes de gráficos"""
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import io
+    import tempfile
+    import os
+    from config import config
     
-    try:
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        story = []
+    # Crear buffer para el PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
+    
+    # Definir colores corporativos exactos del prompt
+    corporate_colors = {
+        'primary': '#1C8074',      # PANTONE 3295 U
+        'secondary': '#666666',    # PANTONE 426 U
+        'accent': '#1A494C',       # PANTONE 175-16 U
+        'accent2': '#94AF92',      # PANTONE 7494 U
+        'light': '#E6ECD8',        # PANTONE 152-2 U
+        'gray': '#C9C9C9'          # PANTONE COLOR GRAY 2 U
+    }
+    
+    # Convertir colores hex a RGB
+    def hex_to_rgb(hex_color):
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    
+    # Función para convertir gráfico de Plotly a imagen
+    def plotly_to_image(fig, filename):
+        """Convierte un gráfico de Plotly a imagen PNG"""
+        try:
+            # Crear directorio temporal si no existe
+            temp_dir = "temp_images"
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir)
+            
+            # Guardar gráfico como imagen
+            img_path = os.path.join(temp_dir, filename)
+            fig.write_image(img_path, width=800, height=400, scale=1)
+            return img_path
+        except Exception as e:
+            print(f"Error guardando gráfico: {e}")
+            return None
+    
+    # Estilos personalizados con colores corporativos
+    styles = getSampleStyleSheet()
+    
+    # Título principal
+    title_style = ParagraphStyle(
+        'CorporateTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor(corporate_colors['primary']),
+        alignment=TA_CENTER,
+        spaceAfter=30
+    )
+    
+    # Subtítulos
+    subtitle_style = ParagraphStyle(
+        'CorporateSubtitle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor(corporate_colors['accent']),
+        spaceAfter=12,
+        spaceBefore=20
+    )
+    
+    # Texto normal
+    normal_style = ParagraphStyle(
+        'CorporateNormal',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.HexColor(corporate_colors['accent']),
+        spaceAfter=6
+    )
+    
+    # Contenido del PDF
+    story = []
+    
+    # Título
+    story.append(Paragraph("📊 Informe Detallado de Producción", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Fecha de generación
+    story.append(Paragraph(f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", normal_style))
+    story.append(Spacer(1, 20))
+    
+    # Resumen Ejecutivo
+    story.append(Paragraph("📋 Resumen Ejecutivo", subtitle_style))
+    story.append(Paragraph(report['resumen_ejecutivo'], normal_style))
+    story.append(Spacer(1, 15))
+    
+    # Métricas Clave
+    story.append(Paragraph("📊 KPIs Principales", subtitle_style))
+    
+    metricas = report['metricas_clave']
+    kpi_data = [
+        ['Métrica', 'Valor'],
+        ['Eficiencia', f"{metricas['eficiencia']:.1f}%"],
+        ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%"],
+        ['Durabilidad Promedio', f"{metricas['durabilidad_promedio']:.1f}%"],
+        ['Dureza Promedio', f"{metricas['dureza_promedio']:.1f}%"],
+        ['Finos Promedio', f"{metricas['finos_promedio']:.1f}%"],
+        ['Total Órdenes', str(metricas.get('total_ordenes', 'N/A'))],
+        ['Productos Únicos', str(metricas.get('productos_unicos', 'N/A'))],
+        ['Plantas Activas', str(metricas.get('plantas_activas', 'N/A'))]
+    ]
+    
+    kpi_table = Table(kpi_data, colWidths=[2*inch, 1.5*inch])
+    kpi_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(corporate_colors['primary'])),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor(corporate_colors['light'])),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor(corporate_colors['gray'])),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+    ]))
+    
+    story.append(kpi_table)
+    story.append(Spacer(1, 20))
+    
+    # Análisis de Producción con gráfico
+    story.append(Paragraph("📈 Análisis de Producción", subtitle_style))
+    story.append(Paragraph(report['analisis_produccion'], normal_style))
+    story.append(Spacer(1, 10))
+    
+    # Incluir gráfico de producción si está disponible
+    if 'graficos' in report and 'produccion' in report['graficos']:
+        try:
+            fig = report['graficos']['produccion']
+            img_path = plotly_to_image(fig, 'produccion_chart.png')
+            if img_path and os.path.exists(img_path):
+                img = Image(img_path, width=6*inch, height=3*inch)
+                story.append(img)
+                story.append(Spacer(1, 10))
+        except Exception as e:
+            print(f"Error incluyendo gráfico de producción: {e}")
+    
+    # Análisis de Calidad con gráfico
+    story.append(Paragraph("🔍 Análisis de Calidad", subtitle_style))
+    story.append(Paragraph(report['analisis_calidad'], normal_style))
+    story.append(Spacer(1, 10))
+    
+    # Incluir gráfico de calidad si está disponible
+    if 'graficos' in report and 'calidad' in report['graficos']:
+        try:
+            fig = report['graficos']['calidad']
+            img_path = plotly_to_image(fig, 'calidad_chart.png')
+            if img_path and os.path.exists(img_path):
+                img = Image(img_path, width=6*inch, height=3*inch)
+                story.append(img)
+                story.append(Spacer(1, 10))
+        except Exception as e:
+            print(f"Error incluyendo gráfico de calidad: {e}")
+    
+    # Análisis de Eficiencia con gráfico
+    story.append(Paragraph("⚡ Análisis de Eficiencia", subtitle_style))
+    story.append(Paragraph(report['analisis_eficiencia'], normal_style))
+    story.append(Spacer(1, 10))
+    
+    # Incluir gráfico de eficiencia si está disponible
+    if 'graficos' in report and 'eficiencia' in report['graficos']:
+        try:
+            fig = report['graficos']['eficiencia']
+            img_path = plotly_to_image(fig, 'eficiencia_chart.png')
+            if img_path and os.path.exists(img_path):
+                img = Image(img_path, width=6*inch, height=3*inch)
+                story.append(img)
+                story.append(Spacer(1, 10))
+        except Exception as e:
+            print(f"Error incluyendo gráfico de eficiencia: {e}")
+    
+    # Comparaciones Temporales
+    if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:
+        story.append(Paragraph("📅 Comparaciones Temporales", subtitle_style))
         
-        # Estilos
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=18,
-            spaceAfter=30,
-            alignment=1,
-            textColor=colors.HexColor('#1C8074')
-        )
+        comparisons = report['comparaciones_temporales']['mes_actual_vs_anterior']
+        comp_data = [['Métrica', 'Mes Actual', 'Mes Anterior', 'Cambio', 'Tendencia']]
         
-        heading_style = ParagraphStyle(
-            'CustomHeading',
-            parent=styles['Heading2'],
-            fontSize=14,
-            spaceAfter=12,
-            spaceBefore=20,
-            textColor=colors.HexColor('#1C8074')
-        )
+        for metric, data in comparisons.items():
+            comp_data.append([
+                metric.replace('_', ' ').title(),
+                f"{data['actual']:.2f}",
+                f"{data['anterior']:.2f}",
+                data['cambio_pct'],
+                data['tendencia']
+            ])
         
-        normal_style = styles['Normal']
-        
-        # Título
-        story.append(Paragraph("📊 Informe Detallado de Producción", title_style))
-        story.append(Paragraph(f"Aliar - {datetime.now().strftime('%d/%m/%Y %H:%M')}", normal_style))
-        story.append(Spacer(1, 20))
-        
-        # Resumen Ejecutivo
-        story.append(Paragraph("📋 Resumen Ejecutivo", heading_style))
-        story.append(Paragraph(report['resumen_ejecutivo'], normal_style))
-        story.append(Spacer(1, 20))
-        
-        # Métricas Clave
-        story.append(Paragraph("📊 Métricas Clave", heading_style))
-        metricas = report['metricas_clave']
-        metricas_data = [
-            ['Métrica', 'Valor'],
-            ['Eficiencia General', f"{metricas['eficiencia']:.1f}%"],
-            ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%"],
-            ['Durabilidad Promedio', f"{metricas['durabilidad_promedio']:.1f}%"],
-            ['Dureza Promedio', f"{metricas['dureza_promedio']:.1f}%"],
-            ['Total Órdenes', f"{metricas['total_ordenes']:,}"],
-            ['Productos Únicos', str(metricas.get('productos_unicos', 'N/A'))],
-            ['Plantas Activas', str(metricas.get('plantas_activas', 'N/A'))]
-        ]
-        
-        metricas_table = Table(metricas_data, colWidths=[2*inch, 3*inch])
-        metricas_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1C8074')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        comp_table = Table(comp_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch, 1*inch])
+        comp_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(corporate_colors['accent'])),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor(corporate_colors['light'])),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor(corporate_colors['gray'])),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
         ]))
-        story.append(metricas_table)
+        
+        story.append(comp_table)
         story.append(Spacer(1, 20))
+    
+    # Correlaciones
+    if 'correlaciones' in report and report['correlaciones']:
+        story.append(Paragraph("🔗 Análisis de Correlaciones", subtitle_style))
         
-        # Análisis de Producción
-        story.append(Paragraph("📈 Análisis de Producción", heading_style))
-        story.append(Paragraph(report['analisis_produccion'], normal_style))
-        story.append(Spacer(1, 20))
+        for corr in report['correlaciones']:
+            story.append(Paragraph(f"• {corr['factor']}: {corr['descripcion']}", normal_style))
         
-        # Análisis de Calidad
-        story.append(Paragraph("🔍 Análisis de Calidad", heading_style))
-        story.append(Paragraph(report['analisis_calidad'], normal_style))
-        story.append(Spacer(1, 20))
-        
-        # Análisis de Eficiencia
-        story.append(Paragraph("⚡ Análisis de Eficiencia", heading_style))
-        story.append(Paragraph(report['analisis_eficiencia'], normal_style))
-        story.append(Spacer(1, 20))
-        
-        # Recomendaciones
-        story.append(Paragraph("💡 Recomendaciones", heading_style))
-        for i, rec in enumerate(report['recomendaciones'], 1):
-            story.append(Paragraph(f"{i}. {rec}", normal_style))
-            story.append(Spacer(1, 6))
-        
-        # Alertas
-        if report['alertas']:
-            story.append(Spacer(1, 20))
-            story.append(Paragraph("⚠️ Alertas y Notificaciones", heading_style))
-            for alerta in report['alertas']:
-                story.append(Paragraph(f"• {alerta['mensaje']}", normal_style))
-                story.append(Spacer(1, 6))
-        
-        # Construir PDF
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-        
-        return pdf_bytes
-        
+        story.append(Spacer(1, 15))
+    
+    # Recomendaciones
+    story.append(Paragraph("💡 Recomendaciones", subtitle_style))
+    for i, rec in enumerate(report['recomendaciones'], 1):
+        story.append(Paragraph(f"{i}. {rec}", normal_style))
+    
+    story.append(Spacer(1, 15))
+    
+    # Alertas
+    if report['alertas']:
+        story.append(Paragraph("⚠️ Alertas", subtitle_style))
+        for alerta in report['alertas']:
+            story.append(Paragraph(f"• {alerta['mensaje']}", normal_style))
+    
+    # Generar PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    # Limpiar archivos temporales
+    try:
+        temp_dir = "temp_images"
+        if os.path.exists(temp_dir):
+            for file in os.listdir(temp_dir):
+                if file.endswith('.png'):
+                    os.remove(os.path.join(temp_dir, file))
     except Exception as e:
-        st.error(f"Error generando PDF: {str(e)}")
-        return None 
+        print(f"Error limpiando archivos temporales: {e}")
+    
+    return buffer.getvalue() 
