@@ -128,7 +128,13 @@ class DetailedReportService:
             if previous_val != 0:
                 change = current_val - previous_val
                 change_pct = (change / previous_val) * 100
-                trend = "subiendo" if change > 0 else "bajando" if change < 0 else "estable"
+                
+                # Lógica especial para diferencia de toneladas (más negativo = peor)
+                if metric == 'diferencia_toneladas':
+                    trend = "bajando" if change > 0 else "subiendo" if change < 0 else "estable"
+                else:
+                    # Para otras métricas, lógica normal
+                    trend = "subiendo" if change > 0 else "bajando" if change < 0 else "estable"
             else:
                 change = 0
                 change_pct = 0
@@ -308,40 +314,30 @@ class DetailedReportService:
         diferencia_change = comparisons['diferencia_toneladas']['cambio_pct']
         
         return f"""
+        
         El presente informe detalla el análisis integral de la producción de alimentos para animales durante el mes actual. 
         Se procesaron {total_ordenes} órdenes de producción con una diferencia de toneladas de {diferencia_toneladas:.1f} toneladas, 
-        demostrando un rendimiento {'sólido' if diferencia_toneladas <= 50 else 'que requiere mejora'} en las operaciones de peletización.
+        demostrando un rendimiento {'excelente' if abs(diferencia_toneladas) <= 20 else 'bueno' if abs(diferencia_toneladas) <= 50 else 'que requiere mejora'} en las operaciones de peletización.
         
         La diferencia de toneladas muestra una tendencia {diferencia_trend} ({diferencia_change}) comparada con el mes anterior, 
-        indicando {'mejoras significativas' if diferencia_trend == 'bajando' else 'áreas de oportunidad' if diferencia_trend == 'subiendo' else 'estabilidad'} 
+        indicando {'un incremento en las pérdidas que demuestra ineficiencia operativa' if diferencia_trend == 'subiendo' else 'mejoras significativas en la eficiencia operativa' if diferencia_trend == 'bajando' else 'estabilidad en los procesos operativos'} 
         en los procesos operativos. La calidad del producto se mantiene en niveles {'satisfactorios' if durabilidad >= 90 else 'aceptables' if durabilidad >= 85 else 'que requieren atención'}, 
         con una durabilidad promedio del {durabilidad:.1f}%.
         
-        El sackoff total del {sackoff:.2f}% {'indica una gestión eficiente' if sackoff <= 3 else 'requiere optimización'} 
-        de las pérdidas de producción. Se identificaron oportunidades de mejora en la optimización de procesos 
-        y la implementación de controles de calidad más rigurosos para optimizar los procesos operativos.
+        El sackoff total del {sackoff:.2f}% {'refleja una gestión eficiente de pérdidas' if sackoff >= -0.3 else 'indica la necesidad de optimizar los procesos de peletización para reducir las pérdidas de producción'}. 
+        {'Los resultados actuales demuestran un control efectivo de las operaciones' if sackoff >= -0.3 else 'Se recomienda revisar los parámetros operativos y fortalecer los controles de calidad para alcanzar el nivel óptimo de -0.3%'}. 
+        Se identificaron oportunidades de mejora en la optimización de procesos y la implementación de controles de calidad más rigurosos para optimizar los procesos operativos.
         """
     
     def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict, sackoff_adiflow_chart: go.Figure, toneladas_adiflow_chart: go.Figure) -> str:
         """Genera el análisis de producción"""
         
         return f"""
-        ANÁLISIS DE PRODUCCIÓN:
-        
-        • Volumen de Producción: Se procesaron {current_kpis['total_ordenes']} órdenes durante el mes actual
-        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
-        • Gestión de Pérdidas: Sackoff total del {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
-        • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f} toneladas
-        
-        TENDENCIAS IDENTIFICADAS:
-        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} ({comparisons['diferencia_toneladas']['cambio_pct']})
-        • El sackoff está {comparisons['sackoff_total']['tendencia']} ({comparisons['sackoff_total']['cambio_pct']})
-        • La producción muestra {'estabilidad' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
-        
+       
         ANÁLISIS DEL SACKOFF POR SEMANA:
         • Se analiza el comportamiento del sackoff comparando semanas con y sin uso de Adiflow
         • La gráfica muestra la evolución semanal del sackoff para identificar patrones y tendencias
-        • Se incluye una línea de referencia del 3% como nivel óptimo de sackoff
+        • Se incluye una línea de referencia del -0.3% como nivel óptimo de sackoff
         • Este análisis permite identificar la efectividad del uso de Adiflow en la reducción de pérdidas semanales
         
         ANÁLISIS DE TONELADAS POR SEMANA:
@@ -380,8 +376,9 @@ class DetailedReportService:
         • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f}
         
         FACTORES DE DIFERENCIA:
-        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} de manera {'significativa' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}
-        • El sackoff está {comparisons['sackoff_total']['tendencia']} {'de manera preocupante' if comparisons['sackoff_total']['tendencia'] == 'subiendo' else 'de manera positiva'}
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} de manera {'significativa' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}, 
+          {'demostrando un incremento en las pérdidas que requiere atención inmediata' if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo' else 'indicando mejoras en la eficiencia operativa' if comparisons['diferencia_toneladas']['tendencia'] == 'bajando' else 'mostrando estabilidad en los procesos'}
+        • El sackoff está {comparisons['sackoff_total']['tendencia']} {'de manera preocupante' if comparisons['sackoff_total']['tendencia'] == 'subiendo' and current_kpis['sackoff_total'] < -0.3 else 'de manera positiva' if comparisons['sackoff_total']['tendencia'] == 'bajando' or current_kpis['sackoff_total'] >= -0.3 else 'requiriendo optimización'}
         • Se identifican oportunidades de optimización en {'todos los procesos' if current_kpis['diferencia_toneladas'] > 100 else 'procesos específicos'}
         """
     
@@ -394,6 +391,8 @@ class DetailedReportService:
         if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo':
             recomendaciones.append("Implementar controles de calidad más frecuentes para mejorar la consistencia")
             recomendaciones.append("Revisar y optimizar parámetros de peletización para reducir el sackoff")
+            recomendaciones.append("Desarrollar un plan de acción inmediato para reducir las pérdidas de producción")
+            recomendaciones.append("Establecer métricas de seguimiento diario para identificar causas raíz de la ineficiencia")
         
         # Recomendaciones basadas en calidad
         if comparisons['durabilidad_promedio']['tendencia'] == 'bajando':
@@ -625,13 +624,13 @@ class DetailedReportService:
                 hovertemplate='<b>Sin Adiflow</b><br>Semana: %{x}<br>Sackoff: %{y:.2f}%<extra></extra>'
             ))
         
-        # Línea de referencia para sackoff óptimo (3%)
+        # Línea de referencia para sackoff óptimo (-0.3%)
         if not weekly_con_adiflow.empty or not weekly_sin_adiflow.empty:
             fig.add_hline(
-                y=3.0,
+                y=-0.3,
                 line_dash="dash",
                 line_color="#1A494C",  # PANTONE 175-16 U
-                annotation_text="Sackoff Óptimo (3%)",
+                annotation_text="Sackoff Óptimo (-0.3%)",
                 annotation_position="top right",
                 line_width=2
             )

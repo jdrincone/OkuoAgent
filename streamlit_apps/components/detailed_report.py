@@ -87,6 +87,105 @@ class DetailedReportAgent:
             "alertas": [{"tipo": "warning", "mensaje": "Informe generado en modo fallback"}]
         }
 
+def create_metric_with_tooltip(title: str, value: str, tooltip_text: str, icon: str = "ℹ️"):
+    """
+    Crea una métrica con tooltip profesional que se muestra al hacer hover
+    
+    Args:
+        title: Título de la métrica
+        value: Valor de la métrica
+        tooltip_text: Texto del tooltip
+        icon: Icono para el tooltip (por defecto ℹ️)
+    """
+    # Crear el HTML para la métrica con tooltip
+    html_content = f"""
+    <div style="position: relative; display: inline-block; width: 100%;">
+        <div style="
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 0.5rem 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            border-left: 5px solid #1C8074;
+            transition: all 0.3s ease;
+            position: relative;
+        ">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.5rem;
+            ">
+                <h4 style="
+                    color: #1A494C;
+                    margin: 0;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                ">
+                    {title}
+                </h4>
+                <div style="
+                    position: relative;
+                    display: inline-block;
+                    cursor: help;
+                ">
+                    <span style="
+                        font-size: 1.2rem;
+                        color: #666666;
+                        opacity: 0.7;
+                        transition: opacity 0.3s ease;
+                    " 
+                    onmouseover="this.style.opacity='1'; this.nextElementSibling.style.display='block';"
+                    onmouseout="this.style.opacity='0.7'; this.nextElementSibling.style.display='none';"
+                    >
+                        {icon}
+                    </span>
+                    <div style="
+                        display: none;
+                        position: absolute;
+                        bottom: 125%;
+                        right: 0;
+                        background: #1A494C;
+                        color: white;
+                        padding: 0.75rem;
+                        border-radius: 8px;
+                        font-size: 0.85rem;
+                        line-height: 1.4;
+                        width: 280px;
+                        z-index: 1000;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                        border: 1px solid #1C8074;
+                    ">
+                        {tooltip_text}
+                        <div style="
+                            position: absolute;
+                            top: 100%;
+                            right: 10px;
+                            border: 8px solid transparent;
+                            border-top-color: #1A494C;
+                        "></div>
+                    </div>
+                </div>
+            </div>
+            <div style="
+                font-size: 2rem;
+                font-weight: 700;
+                color: #1C8074;
+                text-align: center;
+                margin-top: 0.5rem;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            ">
+                {value}
+            </div>
+        </div>
+    </div>
+    """
+    
+    st.markdown(html_content, unsafe_allow_html=True)
+
 def render_detailed_report_page():
     """Renderiza la página del informe detallado simplificada."""
     
@@ -144,26 +243,38 @@ def render_detailed_report_page():
         st.success("✅ Informe generado exitosamente!")
         
         # Resumen Ejecutivo
-        st.subheader("📋 Resumen Ejecutivo")
+        st.subheader("💡 Insights")
         st.write(report['resumen_ejecutivo'])
         
-        # Métricas clave con explicación
-        st.subheader("📊 KPIs Principales - Explicación")
+        # Métricas clave con tooltips profesionales
+        st.subheader("KPIs Principales")
         
         col1, col2, col3 = st.columns(3)
         metricas = report['metricas_clave']
         
         with col1:
-            st.metric("Diferencia de Toneladas", f"{metricas['diferencia_toneladas']:.1f} ton")
-            st.info("**¿Qué significa?** Diferencia entre toneladas planificadas y producidas. Menor es mejor.")
+            create_metric_with_tooltip(
+                title="Diferencia de Toneladas",
+                value=f"{metricas['diferencia_toneladas']:.1f} ton",
+                tooltip_text="<strong>¿Qué significa?</strong><br>Diferencia entre toneladas planificadas y producidas. <strong>Más cercano a cero es mejor</strong>. Valores negativos grandes indican ineficiencia en la producción.",
+                icon="⚖️"
+            )
         
         with col2:
-            st.metric("Sackoff", f"{metricas['sackoff_total']:.2f}%")
-            st.info("**¿Qué significa?** Pérdidas de producción. <3% es óptimo, >5% requiere atención.")
+            create_metric_with_tooltip(
+                title="Sackoff",
+                value=f"{metricas['sackoff_total']:.2f}%",
+                tooltip_text="<strong>¿Qué significa?</strong><br>Pérdidas de producción durante el proceso. <strong>-0.3% es el nivel óptimo</strong>. Valores por debajo de -0.3% indican la necesidad de mejorar los procesos de peletización.",
+                icon="📉"
+            )
         
         with col3:
-            st.metric("Durabilidad", f"{metricas['durabilidad_promedio']:.1f}%")
-            st.info("**¿Qué significa?** Resistencia del pellet. >90% es bueno, <85% requiere mejora.")
+            create_metric_with_tooltip(
+                title="Durabilidad",
+                value=f"{metricas['durabilidad_promedio']:.1f}%",
+                tooltip_text="<strong>¿Qué significa?</strong><br>Resistencia del pellet al manejo y transporte. <strong>&gt;90% es bueno</strong>, <strong>&lt;85% requiere mejora</strong> en el proceso.",
+                icon="📊"
+            )
         
         st.markdown("---")
         
@@ -184,9 +295,9 @@ def render_detailed_report_page():
                 **Interpretación de la gráfica:**
                 - **Línea verde**: Sackoff semanal cuando se usa Adiflow
                 - **Línea gris**: Sackoff semanal cuando NO se usa Adiflow  
-                - **Línea punteada**: Nivel óptimo de sackoff (3%)
+                - **Línea punteada**: Nivel óptimo de sackoff (-0.3%)
                 - **Eje X**: Rango de fechas de cada semana (dd/mm - dd/mm)
-                - **Objetivo**: Mantener el sackoff semanal por debajo del 3% para optimizar la producción
+                - **Objetivo**: Mantener el sackoff semanal en -0.3% o superior para optimizar la producción
                 """)
             
             # Mostrar gráfico de toneladas por semana con y sin Adiflow si está disponible
