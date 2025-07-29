@@ -15,4 +15,5 @@ kaleido>=0.2.1
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 pymysql>=1.1.0
-PyYAML>=6.0 
+PyYAML>=6.0
+pytz>=2024.1 

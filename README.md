@@ -98,14 +98,12 @@ streamlit run run_app.py
 - ✅ **Resumen ejecutivo** con KPIs principales
 - ✅ **Análisis de producción** con gráfico de tendencias
 - ✅ **Análisis de calidad** con métricas por producto
-- ✅ **Análisis de eficiencia** con correlaciones
 - ✅ **Comparaciones temporales** detalladas
 - ✅ **Recomendaciones** accionables
 
 ## 📊 Datos y Métricas Disponibles
 
 ### **KPIs Principales:**
-- **Eficiencia de Producción** (%)
 - **Sackoff Total** (%)
 - **Durabilidad Promedio** (%)
 - **Dureza Promedio** (%)

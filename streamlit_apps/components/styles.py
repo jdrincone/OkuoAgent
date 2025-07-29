@@ -4,6 +4,9 @@ Contiene todos los estilos CSS y componentes visuales reutilizables.
 """
 
 import streamlit as st
+import pandas as pd
+from datetime import datetime, timezone, timedelta
+import pytz
 from config import config
 
 
@@ -229,13 +232,63 @@ def render_status_success(title, message):
     """, unsafe_allow_html=True)
 
 
+def get_last_update_time():
+    """Obtiene la última fecha de actualización de la base de datos en hora colombiana."""
+    try:
+        # Obtener datos de la sesión
+        if 'database_data' in st.session_state and 'produccion_aliar' in st.session_state['database_data']:
+            df = st.session_state['database_data']['produccion_aliar']
+            
+            # Verificar si existe la columna fecha_ingreso
+            if 'fecha_ingreso' in df.columns:
+                # Obtener la fecha máxima
+                max_fecha = df['fecha_ingreso'].max()
+                
+                # Convertir a datetime si no lo está
+                if not pd.isna(max_fecha):
+                    if isinstance(max_fecha, str):
+                        max_fecha = pd.to_datetime(max_fecha)
+                    
+                    # Convertir de UTC a hora colombiana (UTC-5)
+                    colombia_tz = pytz.timezone('America/Bogota')
+                    
+                    # Si la fecha no tiene timezone, asumir UTC
+                    if max_fecha.tzinfo is None:
+                        max_fecha = pytz.utc.localize(max_fecha)
+                    
+                    # Convertir a hora colombiana
+                    fecha_colombiana = max_fecha.astimezone(colombia_tz)
+                    
+                    # Formatear la fecha
+                    fecha_formateada = fecha_colombiana.strftime('%Y-%m-%d %H:%M')
+                    return fecha_formateada
+        
+        return None
+    except Exception as e:
+        st.error(f"Error obteniendo fecha de actualización: {str(e)}")
+        return None
+
 def render_data_status_indicator():
-    """Renderiza el indicador de estado de datos compacto."""
-    st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem; background-color: #E6ECD8; border-radius: 6px; margin: 0.5rem 0; font-size: 0.9rem;">
-        <span style="color: #1A494C;">✅</span>
-        <span style="color: #1A494C; font-weight: 500;">Actualmente solo se tienen datos disponibles de la Fazenda</span>
-        <span style="color: #666666;">•</span>
-        <span style="color: #666666;">📅 En tiempo real</span>
-    </div>
-    """, unsafe_allow_html=True) 
+    """Renderiza el indicador de estado de datos compacto con última fecha de actualización."""
+    
+    # Obtener la última fecha de actualización
+    ultima_actualizacion = get_last_update_time()
+    
+    if ultima_actualizacion:
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem; background-color: #E6ECD8; border-radius: 6px; margin: 0.5rem 0; font-size: 0.9rem;">
+            <span style="color: #1A494C;">✅</span>
+            <span style="color: #1A494C; font-weight: 500;">Actualmente solo se tienen datos disponibles de la Fazenda</span>
+            <span style="color: #666666;">•</span>
+            <span style="color: #666666;">📅 Última actualización: {ultima_actualizacion} (CO)</span>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.5rem; background-color: #E6ECD8; border-radius: 6px; margin: 0.5rem 0; font-size: 0.9rem;">
+            <span style="color: #1A494C;">✅</span>
+            <span style="color: #1A494C; font-weight: 500;">Actualmente solo se tienen datos disponibles de la Fazenda</span>
+            <span style="color: #666666;">•</span>
+            <span style="color: #666666;">📅 En tiempo real</span>
+        </div>
+        """, unsafe_allow_html=True) 

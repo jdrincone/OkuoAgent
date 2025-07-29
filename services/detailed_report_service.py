@@ -46,49 +46,44 @@ class DetailedReportService:
     def _get_period_data(self) -> Dict:
         """Obtiene datos para diferentes períodos temporales"""
         
-        # Fechas de referencia
-        today = datetime.now()
-        start_of_month = today.replace(day=1)
-        start_of_previous_month = (start_of_month - timedelta(days=1)).replace(day=1)
-        start_of_week = today - timedelta(days=today.weekday())
-        
-        # Mes actual
-        current_month = self.df[
-            (self.df['fecha_produccion'] >= start_of_month) & 
-            (self.df['fecha_produccion'] <= today)
-        ]
+        # Usar exactamente el mismo método que kpi_service.py
+        now = datetime.now()
+        current_month = now.month
+        current_year = now.year
         
         # Mes anterior
-        previous_month = self.df[
-            (self.df['fecha_produccion'] >= start_of_previous_month) & 
-            (self.df['fecha_produccion'] < start_of_month)
+        if current_month == 1:
+            prev_month = 12
+            prev_year = current_year - 1
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+        
+        # Mes actual - usar exactamente el mismo filtro que kpi_service
+        current_month_data = self.df[
+            (self.df['fecha_produccion'].dt.month == current_month) & 
+            (self.df['fecha_produccion'].dt.year == current_year)
         ]
         
-        # Semana actual
-        current_week = self.df[
-            (self.df['fecha_produccion'] >= start_of_week) & 
-            (self.df['fecha_produccion'] <= today)
+        # Mes anterior - usar exactamente el mismo filtro que kpi_service
+        previous_month_data = self.df[
+            (self.df['fecha_produccion'].dt.month == prev_month) & 
+            (self.df['fecha_produccion'].dt.year == prev_year)
         ]
         
-        # Semana anterior
-        start_of_previous_week = start_of_week - timedelta(days=7)
-        previous_week = self.df[
-            (self.df['fecha_produccion'] >= start_of_previous_week) & 
-            (self.df['fecha_produccion'] < start_of_week)
-        ]
-        
+        # Para compatibilidad, mantener los nombres originales
         return {
-            'current_month': current_month,
-            'previous_month': previous_month,
-            'current_week': current_week,
-            'previous_week': previous_week
+            'current_month': current_month_data,
+            'previous_month': previous_month_data,
+            'current_week': current_month_data,  # Usar mes actual como semana para compatibilidad
+            'previous_week': previous_month_data  # Usar mes anterior como semana para compatibilidad
         }
     
     def _calculate_period_kpis(self, df: pd.DataFrame) -> Dict:
         """Calcula KPIs para un período específico"""
         if df.empty:
             return {
-                'eficiencia': 0,
+                'diferencia_toneladas': 0,
                 'sackoff_total': 0,
                 'durabilidad_promedio': 0,
                 'dureza_promedio': 0,
@@ -98,42 +93,48 @@ class DetailedReportService:
                 'toneladas_a_producir': 0
             }
         
-        # Calcular eficiencia
-        total_producido = df['toneladas_producidas'].sum()
-        total_a_producir = df['toneladas_a_producir'].sum()
-        eficiencia = (total_producido / total_a_producir * 100) if total_a_producir > 0 else 0
+        # Calcular diferencia de toneladas
+        cond = df["order_produccion_despachada"] == 'Si'
+        df = df[cond].copy()
+        diferencia_toneladas = compute_metric_diferencia_toneladas(df)
         
         # Calcular sackoff
         sackoff = compute_metric_sackoff(df)
         
-        # Calcular métricas de calidad
-        durabilidad = df['durabilidad_pct_qa_agroindustrial'].mean()
-        dureza = df['dureza_qa_agroindustrial'].mean()
-        finos = df['finos_pct_qa_agroindustrial'].mean()
+        # Calcular métricas de calidad usando funciones centralizadas
+        durabilidad = compute_metric_pdi_mean_agroindustrial(df)
+        dureza = compute_metric_dureza_mean_agroindustrial(df)
+        finos = compute_metric_fino_mean_agroindustrial(df)
         
         return {
-            'eficiencia': eficiencia,
+            'diferencia_toneladas': diferencia_toneladas,
             'sackoff_total': sackoff,
             'durabilidad_promedio': durabilidad,
             'dureza_promedio': dureza,
             'finos_promedio': finos,
             'total_ordenes': len(df),
-            'toneladas_producidas': total_producido,
-            'toneladas_a_producir': total_a_producir
+            'toneladas_producidas': df['toneladas_producidas'].sum(),
+            'toneladas_a_producir': df['toneladas_a_producir'].sum()
         }
     
     def _calculate_comparisons(self, current: Dict, previous: Dict) -> Dict:
         """Calcula comparaciones entre períodos"""
         comparisons = {}
         
-        for metric in ['eficiencia', 'sackoff_total', 'durabilidad_promedio', 'dureza_promedio', 'finos_promedio']:
+        for metric in ['diferencia_toneladas', 'sackoff_total', 'durabilidad_promedio', 'dureza_promedio', 'finos_promedio']:
             current_val = current.get(metric, 0)
             previous_val = previous.get(metric, 0)
             
             if previous_val != 0:
                 change = current_val - previous_val
                 change_pct = (change / previous_val) * 100
-                trend = "subiendo" if change > 0 else "bajando" if change < 0 else "estable"
+                
+                # Lógica especial para diferencia de toneladas (más negativo = peor)
+                if metric == 'diferencia_toneladas':
+                    trend = "bajando" if change > 0 else "subiendo" if change < 0 else "estable"
+                else:
+                    # Para otras métricas, lógica normal
+                    trend = "subiendo" if change > 0 else "bajando" if change < 0 else "estable"
             else:
                 change = 0
                 change_pct = 0
@@ -170,63 +171,41 @@ class DetailedReportService:
             sin_adiflow = self.df[self.df['tiene_adiflow'] == False]
             
             if not con_adiflow.empty and not sin_adiflow.empty:
-                eficiencia_con = (con_adiflow['toneladas_producidas'].sum() / con_adiflow['toneladas_a_producir'].sum() * 100) if con_adiflow['toneladas_a_producir'].sum() > 0 else 0
-                eficiencia_sin = (sin_adiflow['toneladas_producidas'].sum() / sin_adiflow['toneladas_a_producir'].sum() * 100) if sin_adiflow['toneladas_a_producir'].sum() > 0 else 0
+                diferencia_con = compute_metric_diferencia_toneladas(con_adiflow)
+                diferencia_sin = compute_metric_diferencia_toneladas(sin_adiflow)
                 
-                mejora = eficiencia_con - eficiencia_sin
+                mejora = diferencia_sin - diferencia_con  # Menor diferencia es mejor
                 correlations.append({
                     'factor': 'Uso de Adiflow',
                     'impacto': 'positivo' if mejora > 0 else 'negativo',
-                    'descripcion': f"Las órdenes con Adiflow muestran {abs(mejora):.1f}% {'mejor' if mejora > 0 else 'peor'} eficiencia"
+                    'descripcion': f"Las órdenes con Adiflow muestran {abs(mejora):.2f} toneladas {'menor' if mejora > 0 else 'mayor'} diferencia"
                 })
         
-        # Correlación entre eficiencia y sackoff
-        self.df['eficiencia_orden'] = (self.df['toneladas_producidas'] / self.df['toneladas_a_producir'] * 100).fillna(0)
-        if 'sackoff_por_orden_produccion' in self.df.columns:
-            corr = self.df['eficiencia_orden'].corr(self.df['sackoff_por_orden_produccion'])
+        # Correlación entre diferencia de toneladas y peso de agua
+        if 'peso_agua_kg' in self.df.columns:
+            self.df['diferencia_por_orden'] = (self.df['toneladas_a_producir'] - self.df['toneladas_producidas'] - self.df['toneladas_anuladas']).fillna(0)
+            corr = self.df['diferencia_por_orden'].corr(self.df['peso_agua_kg'])
             if not pd.isna(corr):
                 correlations.append({
-                    'factor': 'Eficiencia vs Sackoff',
+                    'factor': 'Diferencia vs Peso Agua',
                     'correlacion': round(corr, 3),
-                    'impacto': 'negativo' if corr < -0.3 else 'positivo' if corr > 0.3 else 'bajo',
-                    'descripcion': f"Correlación de {corr:.3f} entre eficiencia y sackoff"
+                    'impacto': 'positivo' if corr > 0.3 else 'negativo' if corr < -0.3 else 'bajo',
+                    'descripcion': f"Correlación de {corr:.3f} entre diferencia de toneladas y peso de agua"
+                })
+        
+        # Correlación entre presión del acondicionador y durabilidad
+        if 'control_presion_acondicionador_psi' in self.df.columns and 'durabilidad_pct_qa_agroindustrial' in self.df.columns:
+            corr = self.df['control_presion_acondicionador_psi'].corr(self.df['durabilidad_pct_qa_agroindustrial'])
+            if not pd.isna(corr):
+                correlations.append({
+                    'factor': 'Presión Acondicionador vs Durabilidad',
+                    'correlacion': round(corr, 3),
+                    'impacto': 'positivo' if corr > 0.3 else 'negativo' if corr < -0.3 else 'bajo',
+                    'descripcion': f"Correlación de {corr:.3f} entre presión del acondicionador y durabilidad"
                 })
         
         return correlations
     
-    def _generate_alertas(self, comparisons: Dict) -> List[Dict]:
-        """Genera alertas basadas en las comparaciones"""
-        alertas = []
-        
-        # Alertas de eficiencia
-        if comparisons.get('eficiencia', {}).get('actual', 0) < 90:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Eficiencia baja: {comparisons['eficiencia']['actual']:.1f}% - Requiere atención inmediata"
-            })
-        
-        # Alertas de sackoff
-        if comparisons.get('sackoff_total', {}).get('actual', 0) > 5:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Sackoff alto: {comparisons['sackoff_total']['actual']:.2f}% - Pérdidas significativas"
-            })
-        
-        # Alertas de calidad
-        if comparisons.get('durabilidad_promedio', {}).get('actual', 0) < 85:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Durabilidad baja: {comparisons['durabilidad_promedio']['actual']:.1f}% - Problemas de calidad"
-            })
-        
-        # Alertas positivas
-        if comparisons.get('eficiencia', {}).get('tendencia') == 'subiendo':
-            alertas.append({
-                'tipo': 'info',
-                'mensaje': f"Eficiencia mejorando: +{comparisons['eficiencia']['cambio_pct']} vs mes anterior"
-            })
-        
-        return alertas
     
     def generate_detailed_report(self, user_context: str = "") -> Dict:
         """
@@ -255,46 +234,53 @@ class DetailedReportService:
         # Analizar correlaciones
         correlations = self._analyze_correlations()
         
-        # Generar alertas
-        alertas = self._generate_alertas(month_comparisons)
+    
         
         # Generar recomendaciones
         recomendaciones = self._generate_recommendations(month_comparisons, correlations)
         
         # Generar gráficos con colores corporativos
-        production_chart = self._generate_production_chart()
         quality_chart = self._generate_quality_chart()
         efficiency_chart = self._generate_efficiency_chart()
+        sackoff_adiflow_chart = self._generate_sackoff_adiflow_chart()
+        toneladas_adiflow_chart = self._generate_toneladas_adiflow_chart()
+        sackoff_agua_chart = self._generate_sackoff_agua_chart()
+        
+        # Analizar relación entre sackoff y dosis de agua
+        sackoff_agua_analysis = self._analyze_sackoff_agua_relationship()
         
         # Construir el informe
         report = {
             "resumen_ejecutivo": self._generate_executive_summary(current_month_kpis, month_comparisons),
-            "analisis_produccion": self._generate_production_analysis(current_month_kpis, month_comparisons),
+            "analisis_produccion": self._generate_production_analysis(current_month_kpis, month_comparisons, sackoff_adiflow_chart, toneladas_adiflow_chart),
             "analisis_calidad": self._generate_quality_analysis(current_month_kpis, month_comparisons),
-            "analisis_eficiencia": self._generate_efficiency_analysis(current_month_kpis, month_comparisons),
+            "analisis_diferencia_toneladas": self._generate_efficiency_analysis(current_month_kpis, month_comparisons),
             "recomendaciones": recomendaciones,
             "metricas_clave": current_month_kpis,
             "comparaciones_temporales": {
                 "mes_actual_vs_anterior": month_comparisons,
                 "semana_actual": {
-                    "eficiencia": current_week_kpis['eficiencia'],
+                    "diferencia_toneladas": current_week_kpis['diferencia_toneladas'],
                     "sackoff": current_week_kpis['sackoff_total'],
                     "durabilidad": current_week_kpis['durabilidad_promedio'],
-                    "tendencia": week_comparisons['eficiencia']['tendencia']
+                    "tendencia": week_comparisons['diferencia_toneladas']['tendencia']
                 }
             },
             "correlaciones": correlations,
             "tendencias": {
-                "eficiencia_tendencia": month_comparisons['eficiencia']['tendencia'],
+                "diferencia_toneladas_tendencia": month_comparisons['diferencia_toneladas']['tendencia'],
                 "calidad_tendencia": month_comparisons['durabilidad_promedio']['tendencia'],
                 "sackoff_tendencia": month_comparisons['sackoff_total']['tendencia']
             },
-            "alertas": alertas,
+
             "graficos": {
-                "produccion": production_chart,
                 "calidad": quality_chart,
-                "eficiencia": efficiency_chart
-            }
+                "diferencia_toneladas": efficiency_chart,
+                "sackoff_adiflow": sackoff_adiflow_chart,
+                "toneladas_adiflow": toneladas_adiflow_chart,
+                "sackoff_agua": sackoff_agua_chart
+            },
+            "sackoff_agua_analysis": sackoff_agua_analysis
         }
         
         return report
@@ -302,44 +288,63 @@ class DetailedReportService:
     def _generate_executive_summary(self, current_kpis: Dict, comparisons: Dict) -> str:
         """Genera el resumen ejecutivo"""
         
-        eficiencia = current_kpis['eficiencia']
+        diferencia_toneladas = current_kpis['diferencia_toneladas']
         sackoff = current_kpis['sackoff_total']
         durabilidad = current_kpis['durabilidad_promedio']
         total_ordenes = current_kpis['total_ordenes']
         
-        eficiencia_trend = comparisons['eficiencia']['tendencia']
-        eficiencia_change = comparisons['eficiencia']['cambio_pct']
+        diferencia_trend = comparisons['diferencia_toneladas']['tendencia']
+        diferencia_change = comparisons['diferencia_toneladas']['cambio_pct']
         
         return f"""
-        El presente informe detalla el análisis integral de la producción de alimentos para animales durante el mes actual. 
-        Se procesaron {total_ordenes} órdenes de producción con una eficiencia general del {eficiencia:.1f}%, 
-        demostrando un rendimiento {'sólido' if eficiencia >= 90 else 'que requiere mejora'} en las operaciones de peletización.
         
-        La eficiencia muestra una tendencia {eficiencia_trend} ({eficiencia_change}) comparada con el mes anterior, 
-        indicando {'mejoras significativas' if eficiencia_trend == 'subiendo' else 'áreas de oportunidad' if eficiencia_trend == 'bajando' else 'estabilidad'} 
+        El presente informe detalla el análisis integral de la producción de alimentos para animales durante el mes actual. 
+        Se procesaron {total_ordenes} órdenes de producción con una diferencia de toneladas de {diferencia_toneladas:.1f} toneladas, 
+        demostrando un rendimiento {'excelente' if abs(diferencia_toneladas) <= 20 else 'bueno' if abs(diferencia_toneladas) <= 50 else 'que requiere mejora'} en las operaciones de peletización.
+        
+        La diferencia de toneladas muestra una tendencia {diferencia_trend} ({diferencia_change}) comparada con el mes anterior, 
+        indicando {'un incremento en las pérdidas que demuestra ineficiencia operativa' if diferencia_trend == 'subiendo' else 'mejoras significativas en la eficiencia operativa' if diferencia_trend == 'bajando' else 'estabilidad en los procesos operativos'} 
         en los procesos operativos. La calidad del producto se mantiene en niveles {'satisfactorios' if durabilidad >= 90 else 'aceptables' if durabilidad >= 85 else 'que requieren atención'}, 
         con una durabilidad promedio del {durabilidad:.1f}%.
         
-        El sackoff total del {sackoff:.2f}% {'indica una gestión eficiente' if sackoff <= 3 else 'requiere optimización'} 
-        de las pérdidas de producción. Se identificaron oportunidades de mejora en la optimización de procesos 
-        y la implementación de controles de calidad más rigurosos para maximizar la eficiencia operativa.
+        El sackoff total del {sackoff:.2f}% {'refleja una gestión eficiente de pérdidas' if sackoff >= -0.3 else 'indica la necesidad de optimizar los procesos de peletización para reducir las pérdidas de producción'}. 
+        {'Los resultados actuales demuestran un control efectivo de las operaciones' if sackoff >= -0.3 else 'Se recomienda revisar los parámetros operativos y fortalecer los controles de calidad para alcanzar el nivel óptimo de -0.3%'}. 
+        Se identificaron oportunidades de mejora en la optimización de procesos y la implementación de controles de calidad más rigurosos para optimizar los procesos operativos.
         """
     
-    def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
+    def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict, sackoff_adiflow_chart: go.Figure, toneladas_adiflow_chart: go.Figure) -> str:
         """Genera el análisis de producción"""
         
         return f"""
         ANÁLISIS DE PRODUCCIÓN:
         
         • Volumen de Producción: Se procesaron {current_kpis['total_ordenes']} órdenes durante el mes actual
-        • Eficiencia Operativa: {current_kpis['eficiencia']:.1f}% de eficiencia general ({comparisons['eficiencia']['cambio_pct']} vs mes anterior)
+        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
         • Gestión de Pérdidas: Sackoff total del {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
         • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f} toneladas
         
         TENDENCIAS IDENTIFICADAS:
-        • La eficiencia está {comparisons['eficiencia']['tendencia']} ({comparisons['eficiencia']['cambio_pct']})
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} ({comparisons['diferencia_toneladas']['cambio_pct']})
         • El sackoff está {comparisons['sackoff_total']['tendencia']} ({comparisons['sackoff_total']['cambio_pct']})
-        • La producción muestra {'estabilidad' if abs(float(comparisons['eficiencia']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
+        • La producción muestra {'estabilidad' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
+        
+        ANÁLISIS DEL SACKOFF POR SEMANA:
+        • Se analiza el comportamiento del sackoff comparando semanas con y sin uso de Adiflow
+        • La gráfica muestra la evolución semanal del sackoff para identificar patrones y tendencias
+        • Se incluye una línea de referencia del -0.3% como nivel óptimo de sackoff
+        • Este análisis permite identificar la efectividad del uso de Adiflow en la reducción de pérdidas semanales
+        
+        ANÁLISIS DE TONELADAS POR SEMANA:
+        • Se analiza la tendencia de toneladas producidas comparando semanas con y sin uso de Adiflow
+        • La gráfica muestra la evolución semanal de la producción para identificar patrones de rendimiento
+        • Se incluye una línea de promedio semanal total como referencia de rendimiento
+        • Este análisis permite identificar el impacto del uso de Adiflow en el volumen de producción semanal
+        
+        ANÁLISIS DE SACKOFF VS DOSIS DE AGUA:
+        • Se analiza la relación entre el sackoff y la dosis de agua utilizada en cada orden de producción
+        • La gráfica compara órdenes con y sin uso de Adiflow para identificar patrones de eficiencia
+        • Se incluye una línea de referencia del -0.3% como nivel óptimo de sackoff
+        • Este análisis permite identificar la influencia de la dosis de agua en las pérdidas de producción
         """
     
     def _generate_quality_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
@@ -360,20 +365,21 @@ class DetailedReportService:
         """
     
     def _generate_efficiency_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
-        """Genera el análisis de eficiencia"""
+        """Genera el análisis de diferencia de toneladas"""
         
         return f"""
-        ANÁLISIS DE EFICIENCIA:
+        ANÁLISIS DE DIFERENCIA DE TONELADAS:
         
-        • Eficiencia General: {current_kpis['eficiencia']:.1f}% ({comparisons['eficiencia']['cambio_pct']} vs mes anterior)
+        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
         • Sackoff Total: {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
         • Total Órdenes: {current_kpis['total_ordenes']}
         • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f}
         
-        FACTORES DE EFICIENCIA:
-        • La eficiencia está {comparisons['eficiencia']['tendencia']} de manera {'significativa' if abs(float(comparisons['eficiencia']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}
-        • El sackoff está {comparisons['sackoff_total']['tendencia']} {'de manera preocupante' if comparisons['sackoff_total']['tendencia'] == 'subiendo' else 'de manera positiva'}
-        • Se identifican oportunidades de optimización en {'todos los procesos' if current_kpis['eficiencia'] < 90 else 'procesos específicos'}
+        FACTORES DE DIFERENCIA:
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} de manera {'significativa' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}, 
+          {'demostrando un incremento en las pérdidas que requiere atención inmediata' if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo' else 'indicando mejoras en la eficiencia operativa' if comparisons['diferencia_toneladas']['tendencia'] == 'bajando' else 'mostrando estabilidad en los procesos'}
+        • El sackoff está {comparisons['sackoff_total']['tendencia']} {'de manera preocupante' if comparisons['sackoff_total']['tendencia'] == 'subiendo' and current_kpis['sackoff_total'] < -0.3 else 'de manera positiva' if comparisons['sackoff_total']['tendencia'] == 'bajando' or current_kpis['sackoff_total'] >= -0.3 else 'requiriendo optimización'}
+        • Se identifican oportunidades de optimización en {'todos los procesos' if current_kpis['diferencia_toneladas'] > 100 else 'procesos específicos'}
         """
     
     def _generate_recommendations(self, comparisons: Dict, correlations: List[Dict]) -> List[str]:
@@ -381,80 +387,12 @@ class DetailedReportService:
         
         recomendaciones = []
         
-        # Recomendaciones basadas en eficiencia
-        if comparisons['eficiencia']['tendencia'] == 'bajando':
-            recomendaciones.append("Implementar controles de calidad más frecuentes para mejorar la consistencia")
-            recomendaciones.append("Revisar y optimizar parámetros de peletización para reducir el sackoff")
+        # Mensaje principal sobre la necesidad de análisis experto
+        recomendaciones.append("🔍 **Análisis Requerido:** Por el momento, no podemos brindar recomendaciones específicas sin la intervención de un experto en procesos de peletización.")
         
-        # Recomendaciones basadas en calidad
-        if comparisons['durabilidad_promedio']['tendencia'] == 'bajando':
-            recomendaciones.append("Desarrollar protocolos estandarizados para mediciones de calidad")
-            recomendaciones.append("Capacitar al personal en técnicas de control de calidad")
-        
-        # Recomendaciones basadas en correlaciones
-        for corr in correlations:
-            if corr['factor'] == 'Uso de Adiflow' and corr['impacto'] == 'positivo':
-                recomendaciones.append("Capacitar al personal en el uso de Adiflow para maximizar su efectividad")
-            elif corr['factor'] == 'Eficiencia vs Sackoff' and corr['impacto'] == 'negativo':
-                recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
-        
-        # Recomendaciones generales
-        recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
-        recomendaciones.append("Implementar un sistema de alertas tempranas para desviaciones de calidad")
-        
-        return recomendaciones[:5]  # Limitar a 5 recomendaciones 
+        recomendaciones.append("📊 **Recopilación de Datos:** Se recomienda ampliar la recopilación de datos operativos para comprender mejor las interacciones entre las diferentes variables del proceso de producción.")
     
-    def _generate_production_chart(self) -> go.Figure:
-        """Genera gráfico de tendencia de producción con colores corporativos"""
-        if self.df.empty:
-            return go.Figure()
-        
-        # Agrupar por fecha y calcular producción diaria
-        daily_production = self.df.groupby('fecha_produccion')['toneladas_producidas'].sum().reset_index()
-        
-        fig = go.Figure()
-        
-        fig.add_trace(go.Scatter(
-            x=daily_production['fecha_produccion'],
-            y=daily_production['toneladas_producidas'],
-            mode='lines+markers',
-            name='Producción Diaria',
-            line=dict(
-                color='#1C8074',  # PANTONE 3295 U
-                width=3
-            ),
-            marker=dict(
-                color='#1C8074',
-                size=6
-            ),
-            fill='tonexty',
-            fillcolor='rgba(230, 236, 216, 0.5)'  # PANTONE 152-2 U con transparencia
-        ))
-        
-        fig.update_layout(
-            title={
-                'text': 'Tendencia de Producción Diaria',
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
-            },
-            xaxis_title='Fecha de Producción',
-            yaxis_title='Toneladas Producidas',
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#1A494C'),  # PANTONE 175-16 U
-            xaxis=dict(
-                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
-                linecolor='#C9C9C9'
-            ),
-            yaxis=dict(
-                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
-                linecolor='#C9C9C9'
-            ),
-            height=400
-        )
-        
-        return fig
+        return recomendaciones
     
     def _generate_quality_chart(self) -> go.Figure:
         """Genera gráfico de métricas de calidad con colores corporativos"""
@@ -462,7 +400,7 @@ class DetailedReportService:
             return go.Figure()
         
         # Calcular métricas de calidad promedio por producto
-        quality_metrics = self.df.groupby('nombre_producto').agg({
+        quality_metrics = self.df.groupby('nombre_producto', observed=True).agg({
             'durabilidad_pct_qa_agroindustrial': 'mean',
             'dureza_qa_agroindustrial': 'mean',
             'finos_pct_qa_agroindustrial': 'mean'
@@ -524,18 +462,18 @@ class DetailedReportService:
         return fig
     
     def _generate_efficiency_chart(self) -> go.Figure:
-        """Genera gráfico de eficiencia vs sackoff con colores corporativos"""
+        """Genera gráfico de diferencia de toneladas vs sackoff con colores corporativos"""
         if self.df.empty:
             return go.Figure()
         
-        # Calcular eficiencia por orden
-        self.df['eficiencia_orden'] = (self.df['toneladas_producidas'] / self.df['toneladas_a_producir'] * 100).fillna(0)
+        # Calcular diferencia de toneladas por orden
+        self.df['diferencia_por_orden'] = (self.df['toneladas_a_producir'] - self.df['toneladas_producidas'] - self.df['toneladas_anuladas']).fillna(0)
         
         fig = go.Figure()
         
-        # Scatter plot de eficiencia vs sackoff
+        # Scatter plot de diferencia de toneladas vs sackoff
         fig.add_trace(go.Scatter(
-            x=self.df['eficiencia_orden'],
+            x=self.df['diferencia_por_orden'],
             y=self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df),
             mode='markers',
             name='Órdenes',
@@ -545,17 +483,17 @@ class DetailedReportService:
                 opacity=0.7
             ),
             text=self.df['nombre_producto'],
-            hovertemplate='<b>%{text}</b><br>Eficiencia: %{x:.1f}%<br>Sackoff: %{y:.2f}%<extra></extra>'
+            hovertemplate='<b>%{text}</b><br>Diferencia: %{x:.1f} ton<br>Sackoff: %{y:.2f}%<extra></extra>'
         ))
         
         # Línea de tendencia
         if len(self.df) > 1:
-            z = np.polyfit(self.df['eficiencia_orden'], 
+            z = np.polyfit(self.df['diferencia_por_orden'], 
                           self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df), 1)
             p = np.poly1d(z)
             fig.add_trace(go.Scatter(
-                x=self.df['eficiencia_orden'],
-                y=p(self.df['eficiencia_orden']),
+                x=self.df['diferencia_por_orden'],
+                y=p(self.df['diferencia_por_orden']),
                 mode='lines',
                 name='Tendencia',
                 line=dict(
@@ -567,12 +505,12 @@ class DetailedReportService:
         
         fig.update_layout(
             title={
-                'text': 'Eficiencia vs Sackoff por Orden',
+                'text': 'Diferencia de Toneladas vs Sackoff por Orden',
                 'x': 0.5,
                 'xanchor': 'center',
                 'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
             },
-            xaxis_title='Eficiencia (%)',
+            xaxis_title='Diferencia de Toneladas',
             yaxis_title='Sackoff (%)',
             plot_bgcolor='white',
             paper_bgcolor='white',
@@ -586,6 +524,405 @@ class DetailedReportService:
                 linecolor='#C9C9C9'
             ),
             height=400
+        )
+        
+        return fig 
+
+    def _generate_sackoff_adiflow_chart(self) -> go.Figure:
+        """Genera gráfico de sackoff por semana con y sin Adiflow con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        # Calcular sackoff semanal para cada grupo
+        def calculate_weekly_sackoff(df_group):
+            if df_group.empty:
+                return pd.DataFrame()
+            
+            # Crear columna de semana
+            df_group = df_group.copy()
+            df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
+            
+            # Agrupar por semana y calcular sackoff semanal
+            weekly_sackoff = df_group.groupby('semana', observed=True).apply(
+                lambda x: compute_metric_sackoff(x)
+            ).reset_index()
+            weekly_sackoff.columns = ['semana', 'sackoff']
+            
+            # Convertir periodo a fecha de inicio de semana
+            weekly_sackoff['fecha_inicio_semana'] = weekly_sackoff['semana'].dt.start_time
+            weekly_sackoff['fecha_fin_semana'] = weekly_sackoff['semana'].dt.end_time
+            
+            # Crear etiqueta con rango de fechas
+            weekly_sackoff['rango_fechas'] = weekly_sackoff.apply(
+                lambda row: f"{row['fecha_inicio_semana'].strftime('%d/%m')} - {row['fecha_fin_semana'].strftime('%d/%m')}", 
+                axis=1
+            )
+            
+            return weekly_sackoff
+        
+        weekly_con_adiflow = calculate_weekly_sackoff(df_con_adiflow)
+        weekly_sin_adiflow = calculate_weekly_sackoff(df_sin_adiflow)
+        
+        fig = go.Figure()
+        
+        # Línea para Con Adiflow
+        if not weekly_con_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_con_adiflow['rango_fechas'],
+                y=weekly_con_adiflow['sackoff'],
+                mode='lines+markers',
+                name='Con Adiflow',
+                line=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#1C8074',
+                    size=8
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Semana: %{x}<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea para Sin Adiflow
+        if not weekly_sin_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_sin_adiflow['rango_fechas'],
+                y=weekly_sin_adiflow['sackoff'],
+                mode='lines+markers',
+                name='Sin Adiflow',
+                line=dict(
+                    color='#666666',  # PANTONE 426 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#666666',
+                    size=8
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Semana: %{x}<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea de referencia para sackoff óptimo (-0.3%)
+        if not weekly_con_adiflow.empty or not weekly_sin_adiflow.empty:
+            fig.add_hline(
+                y=-0.3,
+                line_dash="dash",
+                line_color="#1A494C",  # PANTONE 175-16 U
+                annotation_text="Sackoff Óptimo (-0.3%)",
+                annotation_position="top right",
+                line_width=2
+            )
+        
+        fig.update_layout(
+            title={
+                'text': 'Comportamiento del Sackoff por Semana: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Rango de Fechas (Semana)',
+            yaxis_title='Sackoff (%)',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickangle=-45  # Rotar etiquetas para mejor legibilidad
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                autorange=True  # Auto scale para el eje Y
+            ),
+            height=450,  # Aumentar altura para acomodar etiquetas rotadas
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        return fig 
+
+    def _generate_toneladas_adiflow_chart(self) -> go.Figure:
+        """Genera gráfico de toneladas producidas por semana con y sin Adiflow con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        # Calcular toneladas semanales para cada grupo
+        def calculate_weekly_toneladas(df_group):
+            if df_group.empty:
+                return pd.DataFrame()
+            
+            # Crear columna de semana
+            df_group = df_group.copy()
+            df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
+            
+            # Agrupar por semana y calcular toneladas semanales
+            weekly_toneladas = df_group.groupby('semana', observed=True)['toneladas_producidas'].sum().reset_index()
+            weekly_toneladas.columns = ['semana', 'toneladas_producidas']
+            
+            # Convertir periodo a fecha de inicio de semana
+            weekly_toneladas['fecha_inicio_semana'] = weekly_toneladas['semana'].dt.start_time
+            weekly_toneladas['fecha_fin_semana'] = weekly_toneladas['semana'].dt.end_time
+            
+            # Crear etiqueta con rango de fechas
+            weekly_toneladas['rango_fechas'] = weekly_toneladas.apply(
+                lambda row: f"{row['fecha_inicio_semana'].strftime('%d/%m')} - {row['fecha_fin_semana'].strftime('%d/%m')}", 
+                axis=1
+            )
+            
+            return weekly_toneladas
+        
+        weekly_con_adiflow = calculate_weekly_toneladas(df_con_adiflow)
+        weekly_sin_adiflow = calculate_weekly_toneladas(df_sin_adiflow)
+        
+        fig = go.Figure()
+        
+        # Línea para Con Adiflow
+        if not weekly_con_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_con_adiflow['rango_fechas'],
+                y=weekly_con_adiflow['toneladas_producidas'],
+                mode='lines+markers',
+                name='Con Adiflow',
+                line=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#1C8074',
+                    size=8
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Semana: %{x}<br>Toneladas: %{y:,.0f} ton<extra></extra>'
+            ))
+        
+        # Línea para Sin Adiflow
+        if not weekly_sin_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_sin_adiflow['rango_fechas'],
+                y=weekly_sin_adiflow['toneladas_producidas'],
+                mode='lines+markers',
+                name='Sin Adiflow',
+                line=dict(
+                    color='#666666',  # PANTONE 426 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#666666',
+                    size=8
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Semana: %{x}<br>Toneladas: %{y:,.0f} ton<extra></extra>'
+            ))
+        
+        # Línea de promedio semanal total (opcional)
+        if not weekly_con_adiflow.empty or not weekly_sin_adiflow.empty:
+            # Combinar todas las semanas para calcular promedio
+            all_weeks = pd.concat([
+                weekly_con_adiflow[['rango_fechas', 'toneladas_producidas']] if not weekly_con_adiflow.empty else pd.DataFrame(),
+                weekly_sin_adiflow[['rango_fechas', 'toneladas_producidas']] if not weekly_sin_adiflow.empty else pd.DataFrame()
+            ])
+            
+            if not all_weeks.empty:
+                # Agrupar por rango de fechas y sumar toneladas
+                total_weekly = all_weeks.groupby('rango_fechas', observed=True)['toneladas_producidas'].sum().reset_index()
+                promedio_total = total_weekly['toneladas_producidas'].mean()
+                
+                # Agregar línea horizontal del promedio
+                fig.add_hline(
+                    y=promedio_total,
+                    line_dash="dot",
+                    line_color="#94AF92",  # PANTONE 7494 U
+                    annotation_text=f"Promedio Semanal: {promedio_total:,.0f} ton",
+                    annotation_position="top right",
+                    line_width=2
+                )
+        
+        fig.update_layout(
+            title={
+                'text': 'Tendencia de Toneladas Producidas por Semana: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Rango de Fechas (Semana)',
+            yaxis_title='Toneladas Producidas',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickangle=-45  # Rotar etiquetas para mejor legibilidad
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickformat=',',  # Formato con comas para miles
+                autorange=True  # Auto scale para el eje Y
+            ),
+            height=450,  # Aumentar altura para acomodar etiquetas rotadas
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        return fig 
+
+    def _analyze_sackoff_agua_relationship(self) -> Dict:
+        """Analiza la relación entre peso de agua y sackoff"""
+        if self.df.empty or 'peso_agua_kg' not in self.df.columns:
+            return {
+                'has_analysis': False,
+                'message': 'No hay datos suficientes para el análisis'
+            }
+        
+        # Filtrar datos válidos
+        df_valid = self.df.dropna(subset=['peso_agua_kg', 'sackoff_por_orden_produccion'])
+        
+        if df_valid.empty:
+            return {
+                'has_analysis': False,
+                'message': 'No hay datos válidos para el análisis'
+            }
+        
+        # Análisis por rangos de peso de agua
+        df_valid_copy = df_valid.copy()
+        df_valid_copy['rango_agua'] = pd.cut(df_valid_copy['peso_agua_kg'], 
+                                            bins=[0, 300, 500, 700, 1000, float('inf')],
+                                            labels=['0-300kg', '300-500kg', '500-700kg', '700-1000kg', '>1000kg'])
+        
+        # Calcular estadísticas por rango
+        stats_por_rango = df_valid_copy.groupby('rango_agua', observed=True).agg({
+            'sackoff_por_orden_produccion': ['mean', 'std', 'count'],
+            'peso_agua_kg': 'mean'
+        }).round(3)
+        
+        # Análisis específico para órdenes con más de 500kg
+        df_alto_agua = df_valid[df_valid['peso_agua_kg'] > 500]
+        df_bajo_agua = df_valid[df_valid['peso_agua_kg'] <= 500]
+        
+        if not df_alto_agua.empty and not df_bajo_agua.empty:
+            # Calcular diferencias
+            sackoff_alto_agua = df_alto_agua['sackoff_por_orden_produccion'].mean()
+            sackoff_bajo_agua = df_bajo_agua['sackoff_por_orden_produccion'].mean()
+            
+            # Determinar si las órdenes con alto agua tienden a sackoff cercano a cero
+            sackoff_cerca_cero_alto = df_alto_agua[abs(df_alto_agua['sackoff_por_orden_produccion']) <= 0.5].shape[0]
+            total_alto_agua = df_alto_agua.shape[0]
+            porcentaje_cerca_cero = (sackoff_cerca_cero_alto / total_alto_agua * 100) if total_alto_agua > 0 else 0
+            
+            return {
+                'has_analysis': True,
+                'stats_por_rango': stats_por_rango.to_dict(),
+                'sackoff_alto_agua': sackoff_alto_agua,
+                'sackoff_bajo_agua': sackoff_bajo_agua,
+                'porcentaje_cerca_cero': porcentaje_cerca_cero,
+                'total_alto_agua': total_alto_agua,
+                'sackoff_cerca_cero_alto': sackoff_cerca_cero_alto,
+                'tiene_tendencia_cerca_cero': porcentaje_cerca_cero >= 50,  # Si más del 50% están cerca de cero
+                'diferencia_significativa': abs(sackoff_alto_agua - sackoff_bajo_agua) > 0.5
+            }
+        
+        return {
+            'has_analysis': False,
+            'message': 'No hay suficientes datos para comparar rangos de peso de agua'
+        }
+
+    def _generate_sackoff_agua_chart(self) -> go.Figure:
+        """Genera gráfico de sackoff vs dosis de agua con y sin Adiflow"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        fig = go.Figure()
+        
+        # Scatter plot para Con Adiflow
+        if not df_con_adiflow.empty and 'peso_agua_kg' in df_con_adiflow.columns:
+            fig.add_trace(go.Scatter(
+                x=df_con_adiflow['peso_agua_kg'],
+                y=df_con_adiflow['sackoff_por_orden_produccion'],
+                mode='markers',
+                name='Con Adiflow',
+                marker=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    size=8,
+                    opacity=0.7
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Peso Agua: %{x:.1f} kg<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Scatter plot para Sin Adiflow
+        if not df_sin_adiflow.empty and 'peso_agua_kg' in df_sin_adiflow.columns:
+            fig.add_trace(go.Scatter(
+                x=df_sin_adiflow['peso_agua_kg'],
+                y=df_sin_adiflow['sackoff_por_orden_produccion'],
+                mode='markers',
+                name='Sin Adiflow',
+                marker=dict(
+                    color='#666666',  # PANTONE 426 U
+                    size=8,
+                    opacity=0.7
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Peso Agua: %{x:.1f} kg<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea de referencia para sackoff óptimo (-0.3%)
+        fig.add_hline(
+            y=-0.3,
+            line_dash="dash",
+            line_color="#1A494C",  # PANTONE 175-16 U
+            annotation_text="Sackoff Óptimo (-0.3%)",
+            annotation_position="top right",
+            line_width=2
+        )
+        
+        fig.update_layout(
+            title={
+                'text': 'Sackoff vs Dosis de Agua: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Peso Agua (kg)',
+            yaxis_title='Sackoff (%)',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            height=500,
+            showlegend=True,
+            legend=dict(
+                x=0.02,
+                y=0.98,
+                bgcolor='rgba(255,255,255,0.8)',
+                bordercolor='#C9C9C9',
+                borderwidth=1
+            )
         )
         
         return fig 

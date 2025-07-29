@@ -67,8 +67,7 @@ def calculate_kpis(df: pd.DataFrame) -> dict:
         'total_toneladas_producidas': df['toneladas_producidas'].sum(),
         'total_toneladas_anuladas': df['toneladas_anuladas'].sum(),
         'total_ordenes': df['orden_produccion'].nunique(),
-        'eficiencia_global': ((df['toneladas_producidas'].sum() / 
-                              (df['toneladas_producidas'].sum() + df['toneladas_anuladas'].sum())) * 100),
+        'diferencia_toneladas': compute_metric_diferencia_toneladas(df),
         'sackoff_global': ((df['toneladas_a_producir'].sum() - df['toneladas_producidas'].sum() - 
                            df['toneladas_anuladas'].sum()) / df['toneladas_producidas'].sum() * 100),
         'durabilidad_promedio_qa': df['durabilidad_pct_qa_agroindustrial'].mean(),
@@ -95,11 +94,8 @@ def analyze_trends(df: pd.DataFrame, group_col: str = 'mes_produccion') -> pd.Da
     df = df[cond].copy()
     df['variacion_sackoff'] = df['sackoff'].pct_change() * 100
     df['variacion_produccion'] = df['total_toneladas_producidas'].pct_change() * 100
-    df['variacion_eficiencia'] = df['total_toneladas_producidas'].div(
-        df['total_toneladas_producidas'] + df['total_toneladas_anuladas']
-    ).pct_change() * 100
     
-    return df.round(3)
+    return df
 
 
 def detect_anomalies(df: pd.DataFrame, column: str, threshold: float = 2.0) -> pd.DataFrame:
