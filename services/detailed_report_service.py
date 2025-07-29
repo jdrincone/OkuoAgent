@@ -206,39 +206,6 @@ class DetailedReportService:
         
         return correlations
     
-    def _generate_alertas(self, comparisons: Dict) -> List[Dict]:
-        """Genera alertas basadas en las comparaciones"""
-        alertas = []
-        
-        # Alertas de diferencia de toneladas
-        if comparisons.get('diferencia_toneladas', {}).get('actual', 0) > 100:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Diferencia de toneladas alta: {comparisons['diferencia_toneladas']['actual']:.1f} toneladas - Requiere atención inmediata"
-            })
-        
-        # Alertas de sackoff
-        if comparisons.get('sackoff_total', {}).get('actual', 0) > 5:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Sackoff alto: {comparisons['sackoff_total']['actual']:.2f}% - Pérdidas significativas"
-            })
-        
-        # Alertas de calidad
-        if comparisons.get('durabilidad_promedio', {}).get('actual', 0) < 85:
-            alertas.append({
-                'tipo': 'warning',
-                'mensaje': f"Durabilidad baja: {comparisons['durabilidad_promedio']['actual']:.1f}% - Problemas de calidad"
-            })
-        
-        # Alertas positivas
-        if comparisons.get('diferencia_toneladas', {}).get('tendencia') == 'bajando':
-            alertas.append({
-                'tipo': 'info',
-                'mensaje': f"Diferencia de toneladas mejorando: {comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior"
-            })
-        
-        return alertas
     
     def generate_detailed_report(self, user_context: str = "") -> Dict:
         """
@@ -267,8 +234,7 @@ class DetailedReportService:
         # Analizar correlaciones
         correlations = self._analyze_correlations()
         
-        # Generar alertas
-        alertas = self._generate_alertas(month_comparisons)
+    
         
         # Generar recomendaciones
         recomendaciones = self._generate_recommendations(month_comparisons, correlations)
@@ -306,7 +272,7 @@ class DetailedReportService:
                 "calidad_tendencia": month_comparisons['durabilidad_promedio']['tendencia'],
                 "sackoff_tendencia": month_comparisons['sackoff_total']['tendencia']
             },
-            "alertas": alertas,
+
             "graficos": {
                 "calidad": quality_chart,
                 "diferencia_toneladas": efficiency_chart,
@@ -422,22 +388,10 @@ class DetailedReportService:
         recomendaciones = []
         
         # Mensaje principal sobre la necesidad de análisis experto
-        recomendaciones.append("🔍 **Análisis Requerido:** Por el momento, no podemos brindar recomendaciones específicas sin la intervención de un experto en procesos de peletización. Los datos actuales muestran patrones complejos que requieren interpretación especializada.")
+        recomendaciones.append("🔍 **Análisis Requerido:** Por el momento, no podemos brindar recomendaciones específicas sin la intervención de un experto en procesos de peletización.")
         
         recomendaciones.append("📊 **Recopilación de Datos:** Se recomienda ampliar la recopilación de datos operativos para comprender mejor las interacciones entre las diferentes variables del proceso de producción.")
-        
-        recomendaciones.append("🧪 **Validación de Fenómenos:** Es necesario realizar análisis controlados para validar las correlaciones observadas y entender los mecanismos causales subyacentes en los procesos de peletización.")
-        
-        # Recomendaciones específicas solo si hay tendencias muy claras
-        if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo' and abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 10:
-            recomendaciones.append("⚠️ **Atención Inmediata:** La diferencia de toneladas muestra un incremento significativo que requiere revisión urgente por parte del equipo técnico especializado.")
-        
-        if comparisons['sackoff_total']['tendencia'] == 'subiendo' and comparisons['sackoff_total']['actual'] < -2.0:
-            recomendaciones.append("⚠️ **Control de Calidad:** Los niveles de sackoff están aumentando de manera preocupante, se requiere intervención técnica inmediata para estabilizar el proceso.")
-        
-        # Recomendación final
-        recomendaciones.append("📈 **Seguimiento Continuo:** Mantener un monitoreo constante de las métricas clave mientras se desarrolla un plan de acción basado en análisis técnico especializado.")
-        
+    
         return recomendaciones
     
     def _generate_quality_chart(self) -> go.Figure:

@@ -84,7 +84,7 @@ class DetailedReportAgent:
             },
             "correlaciones": [],
             "tendencias": {},
-            "alertas": [{"tipo": "warning", "mensaje": "Informe generado en modo fallback"}]
+
         }
 
 def create_metric_with_tooltip(title: str, value: str, tooltip_text: str, icon: str = "ℹ️"):
@@ -441,24 +441,11 @@ def render_detailed_report_page():
                     else:
                         st.info("ℹ️ Impacto Bajo")
         
-        # Recomendaciones y Alertas
-        st.subheader("💡 Recomendaciones y Alertas")
+        # Recomendaciones
+        st.subheader("💡 Recomendaciones")
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📋 Recomendaciones")
-            for i, rec in enumerate(report['recomendaciones'], 1):
-                st.write(f"**{i}.** {rec}")
-        
-        with col2:
-            if report['alertas']:
-                st.subheader("⚠️ Alertas")
-                for alerta in report['alertas']:
-                    if alerta['tipo'] == 'warning':
-                        st.warning(alerta['mensaje'])
-                    elif alerta['tipo'] == 'info':
-                        st.info(alerta['mensaje'])
+        for i, rec in enumerate(report['recomendaciones'], 1):
+            st.write(f"**{i}.** {rec}")
 
 def generate_pdf_report(report: Dict) -> bytes:
     """Genera un PDF del informe con colores corporativos e imágenes de gráficos"""
@@ -690,11 +677,7 @@ def generate_pdf_report(report: Dict) -> bytes:
     
     story.append(Spacer(1, 15))
     
-    # Alertas
-    if report['alertas']:
-        story.append(Paragraph("⚠️ Alertas", subtitle_style))
-        for alerta in report['alertas']:
-            story.append(Paragraph(f"• {alerta['mensaje']}", normal_style))
+
     
     # Generar PDF
     doc.build(story)
