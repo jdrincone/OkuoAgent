@@ -269,6 +269,9 @@ class DetailedReportService:
         toneladas_adiflow_chart = self._generate_toneladas_adiflow_chart()
         sackoff_agua_chart = self._generate_sackoff_agua_chart()
         
+        # Analizar relación entre sackoff y dosis de agua
+        sackoff_agua_analysis = self._analyze_sackoff_agua_relationship()
+        
         # Construir el informe
         report = {
             "resumen_ejecutivo": self._generate_executive_summary(current_month_kpis, month_comparisons),
@@ -299,7 +302,8 @@ class DetailedReportService:
                 "sackoff_adiflow": sackoff_adiflow_chart,
                 "toneladas_adiflow": toneladas_adiflow_chart,
                 "sackoff_agua": sackoff_agua_chart
-            }
+            },
+            "sackoff_agua_analysis": sackoff_agua_analysis
         }
         
         return report
@@ -674,11 +678,7 @@ class DetailedReportService:
             yaxis=dict(
                 gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
                 linecolor='#C9C9C9',
-                range=[0, max(
-                    weekly_con_adiflow['sackoff'].max() if not weekly_con_adiflow.empty else 0,
-                    weekly_sin_adiflow['sackoff'].max() if not weekly_sin_adiflow.empty else 0,
-                    5  # Mínimo 5% para mostrar la línea de referencia
-                ) * 1.1]
+                autorange=True  # Auto scale para el eje Y
             ),
             height=450,  # Aumentar altura para acomodar etiquetas rotadas
             legend=dict(
@@ -811,11 +811,7 @@ class DetailedReportService:
                 gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
                 linecolor='#C9C9C9',
                 tickformat=',',  # Formato con comas para miles
-                range=[0, max(
-                    weekly_con_adiflow['toneladas_producidas'].max() if not weekly_con_adiflow.empty else 0,
-                    weekly_sin_adiflow['toneladas_producidas'].max() if not weekly_sin_adiflow.empty else 0,
-                    1000  # Mínimo 1000 ton para mostrar la gráfica
-                ) * 1.1]
+                autorange=True  # Auto scale para el eje Y
             ),
             height=450,  # Aumentar altura para acomodar etiquetas rotadas
             legend=dict(
@@ -828,6 +824,65 @@ class DetailedReportService:
         )
         
         return fig 
+
+    def _analyze_sackoff_agua_relationship(self) -> Dict:
+        """Analiza la relación entre peso de agua y sackoff"""
+        if self.df.empty or 'peso_agua_kg' not in self.df.columns:
+            return {
+                'has_analysis': False,
+                'message': 'No hay datos suficientes para el análisis'
+            }
+        
+        # Filtrar datos válidos
+        df_valid = self.df.dropna(subset=['peso_agua_kg', 'sackoff_por_orden_produccion'])
+        
+        if df_valid.empty:
+            return {
+                'has_analysis': False,
+                'message': 'No hay datos válidos para el análisis'
+            }
+        
+        # Análisis por rangos de peso de agua
+        df_valid['rango_agua'] = pd.cut(df_valid['peso_agua_kg'], 
+                                       bins=[0, 300, 500, 700, 1000, float('inf')],
+                                       labels=['0-300kg', '300-500kg', '500-700kg', '700-1000kg', '>1000kg'])
+        
+        # Calcular estadísticas por rango
+        stats_por_rango = df_valid.groupby('rango_agua').agg({
+            'sackoff_por_orden_produccion': ['mean', 'std', 'count'],
+            'peso_agua_kg': 'mean'
+        }).round(3)
+        
+        # Análisis específico para órdenes con más de 500kg
+        df_alto_agua = df_valid[df_valid['peso_agua_kg'] > 500]
+        df_bajo_agua = df_valid[df_valid['peso_agua_kg'] <= 500]
+        
+        if not df_alto_agua.empty and not df_bajo_agua.empty:
+            # Calcular diferencias
+            sackoff_alto_agua = df_alto_agua['sackoff_por_orden_produccion'].mean()
+            sackoff_bajo_agua = df_bajo_agua['sackoff_por_orden_produccion'].mean()
+            
+            # Determinar si las órdenes con alto agua tienden a sackoff cercano a cero
+            sackoff_cerca_cero_alto = df_alto_agua[abs(df_alto_agua['sackoff_por_orden_produccion']) <= 0.5].shape[0]
+            total_alto_agua = df_alto_agua.shape[0]
+            porcentaje_cerca_cero = (sackoff_cerca_cero_alto / total_alto_agua * 100) if total_alto_agua > 0 else 0
+            
+            return {
+                'has_analysis': True,
+                'stats_por_rango': stats_por_rango.to_dict(),
+                'sackoff_alto_agua': sackoff_alto_agua,
+                'sackoff_bajo_agua': sackoff_bajo_agua,
+                'porcentaje_cerca_cero': porcentaje_cerca_cero,
+                'total_alto_agua': total_alto_agua,
+                'sackoff_cerca_cero_alto': sackoff_cerca_cero_alto,
+                'tiene_tendencia_cerca_cero': porcentaje_cerca_cero >= 50,  # Si más del 50% están cerca de cero
+                'diferencia_significativa': abs(sackoff_alto_agua - sackoff_bajo_agua) > 0.5
+            }
+        
+        return {
+            'has_analysis': False,
+            'message': 'No hay suficientes datos para comparar rangos de peso de agua'
+        }
 
     def _generate_sackoff_agua_chart(self) -> go.Figure:
         """Genera gráfico de sackoff vs dosis de agua con y sin Adiflow"""

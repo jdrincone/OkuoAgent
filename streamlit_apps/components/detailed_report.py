@@ -312,9 +312,20 @@ def render_detailed_report_page():
                 - **Objetivo**: Identificar el impacto del Adiflow en el volumen de producción semanal
                 """)
             
+
+        
+        # Análisis de Calidad
+        with st.expander("🔍 Análisis de Calidad", expanded=True):
+            st.write(report['analisis_calidad'])
+            
+            # Mostrar gráfico de calidad si está disponible
+            if 'graficos' in report and 'calidad' in report['graficos']:
+                st.plotly_chart(report['graficos']['calidad'], use_container_width=True)
+        
+        # Análisis de Sackoff vs Dosis de Agua
+        with st.expander("💧 Sackoff vs Dosis de Agua: Con vs Sin Adiflow", expanded=True):
             # Mostrar gráfico de sackoff vs dosis de agua si está disponible
             if 'graficos' in report and 'sackoff_agua' in report['graficos']:
-                st.subheader("💧 Sackoff vs Dosis de Agua: Con vs Sin Adiflow")
                 st.plotly_chart(report['graficos']['sackoff_agua'], use_container_width=True)
                 
                 # Agregar explicación de la gráfica
@@ -327,22 +338,82 @@ def render_detailed_report_page():
                 - **Eje Y**: Sackoff por orden de producción (%)
                 - **Objetivo**: Identificar la relación entre dosis de agua y pérdidas de producción
                 """)
-        
-        # Análisis de Calidad
-        with st.expander("🔍 Análisis de Calidad", expanded=True):
-            st.write(report['analisis_calidad'])
             
-            # Mostrar gráfico de calidad si está disponible
-            if 'graficos' in report and 'calidad' in report['graficos']:
-                st.plotly_chart(report['graficos']['calidad'], use_container_width=True)
-        
-        # Análisis de Diferencia de Toneladas
-        with st.expander("⚡ Análisis de Diferencia de Toneladas", expanded=True):
-            st.write(report['analisis_diferencia_toneladas'])
-            
-            # Mostrar gráfico de diferencia de toneladas si está disponible
-            if 'graficos' in report and 'diferencia_toneladas' in report['graficos']:
-                st.plotly_chart(report['graficos']['diferencia_toneladas'], use_container_width=True)
+            # Mostrar análisis de relación entre sackoff y dosis de agua
+            if 'sackoff_agua_analysis' in report and report['sackoff_agua_analysis']['has_analysis']:
+                analysis = report['sackoff_agua_analysis']
+                
+                st.subheader("📊 Análisis de Relación: Sackoff vs Dosis de Agua")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric(
+                        label="Sackoff Promedio (>500kg agua)",
+                        value=f"{analysis['sackoff_alto_agua']:.2f}%",
+                        delta=f"{analysis['sackoff_alto_agua'] - analysis['sackoff_bajo_agua']:.2f}% vs ≤500kg"
+                    )
+                    
+                    st.metric(
+                        label="Órdenes con >500kg agua",
+                        value=f"{analysis['total_alto_agua']}",
+                        delta=f"{analysis['sackoff_cerca_cero_alto']} cerca de cero"
+                    )
+                
+                with col2:
+                    st.metric(
+                        label="Sackoff Promedio (≤500kg agua)",
+                        value=f"{analysis['sackoff_bajo_agua']:.2f}%"
+                    )
+                    
+                    st.metric(
+                        label="% Órdenes cerca de cero (>500kg)",
+                        value=f"{analysis['porcentaje_cerca_cero']:.1f}%"
+                    )
+                
+                # Mostrar conclusión del análisis
+                if analysis['tiene_tendencia_cerca_cero']:
+                    st.success(f"""
+                    **🎯 Hallazgo Clave:** 
+                    Las órdenes de producción con más de 500kg de agua tienden a tener un sackoff cercano a cero 
+                    ({analysis['porcentaje_cerca_cero']:.1f}% de las órdenes con >500kg tienen sackoff entre -0.5% y +0.5%).
+                    
+                    **📈 Implicación:** Esta tendencia sugiere que dosis de agua superiores a 500kg pueden optimizar 
+                    el proceso de peletización, reduciendo las pérdidas de producción.
+                    """)
+                else:
+                    st.info(f"""
+                    **📊 Análisis de Dosis de Agua:**
+                    Se analizaron {analysis['total_alto_agua']} órdenes con más de 500kg de agua.
+                    El {analysis['porcentaje_cerca_cero']:.1f}% de estas órdenes tienen sackoff cercano a cero.
+                    
+                    **💡 Observación:** Aunque no se detecta una tendencia clara, se recomienda monitorear 
+                    continuamente la relación entre dosis de agua y sackoff para optimizar los procesos.
+                    """)
+                
+                # Mostrar estadísticas detalladas por rango
+                if 'stats_por_rango' in analysis:
+                    st.subheader("📋 Estadísticas por Rango de Peso de Agua")
+                    
+                    # Crear tabla de estadísticas
+                    stats_data = []
+                    for rango, stats in analysis['stats_por_rango'].items():
+                        if 'sackoff_por_orden_produccion' in stats:
+                            stats_data.append({
+                                'Rango': rango,
+                                'Sackoff Promedio (%)': f"{stats['sackoff_por_orden_produccion']['mean']:.2f}",
+                                'Desv. Estándar': f"{stats['sackoff_por_orden_produccion']['std']:.2f}",
+                                'Número de Órdenes': stats['sackoff_por_orden_produccion']['count']
+                            })
+                    
+                    if stats_data:
+                        st.dataframe(
+                            pd.DataFrame(stats_data),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+            else:
+                st.warning("No hay suficientes datos para realizar el análisis de relación entre sackoff y dosis de agua.")
         
         
         # Correlaciones
