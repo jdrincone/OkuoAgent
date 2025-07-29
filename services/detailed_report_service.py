@@ -267,6 +267,7 @@ class DetailedReportService:
         efficiency_chart = self._generate_efficiency_chart()
         sackoff_adiflow_chart = self._generate_sackoff_adiflow_chart()
         toneladas_adiflow_chart = self._generate_toneladas_adiflow_chart()
+        sackoff_agua_chart = self._generate_sackoff_agua_chart()
         
         # Construir el informe
         report = {
@@ -296,7 +297,8 @@ class DetailedReportService:
                 "calidad": quality_chart,
                 "diferencia_toneladas": efficiency_chart,
                 "sackoff_adiflow": sackoff_adiflow_chart,
-                "toneladas_adiflow": toneladas_adiflow_chart
+                "toneladas_adiflow": toneladas_adiflow_chart,
+                "sackoff_agua": sackoff_agua_chart
             }
         }
         
@@ -333,7 +335,18 @@ class DetailedReportService:
         """Genera el análisis de producción"""
         
         return f"""
-       
+        ANÁLISIS DE PRODUCCIÓN:
+        
+        • Volumen de Producción: Se procesaron {current_kpis['total_ordenes']} órdenes durante el mes actual
+        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
+        • Gestión de Pérdidas: Sackoff total del {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
+        • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f} toneladas
+        
+        TENDENCIAS IDENTIFICADAS:
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} ({comparisons['diferencia_toneladas']['cambio_pct']})
+        • El sackoff está {comparisons['sackoff_total']['tendencia']} ({comparisons['sackoff_total']['cambio_pct']})
+        • La producción muestra {'estabilidad' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
+        
         ANÁLISIS DEL SACKOFF POR SEMANA:
         • Se analiza el comportamiento del sackoff comparando semanas con y sin uso de Adiflow
         • La gráfica muestra la evolución semanal del sackoff para identificar patrones y tendencias
@@ -345,6 +358,12 @@ class DetailedReportService:
         • La gráfica muestra la evolución semanal de la producción para identificar patrones de rendimiento
         • Se incluye una línea de promedio semanal total como referencia de rendimiento
         • Este análisis permite identificar el impacto del uso de Adiflow en el volumen de producción semanal
+        
+        ANÁLISIS DE SACKOFF VS DOSIS DE AGUA:
+        • Se analiza la relación entre el sackoff y la dosis de agua utilizada en cada orden de producción
+        • La gráfica compara órdenes con y sin uso de Adiflow para identificar patrones de eficiencia
+        • Se incluye una línea de referencia del -0.3% como nivel óptimo de sackoff
+        • Este análisis permite identificar la influencia de la dosis de agua en las pérdidas de producción
         """
     
     def _generate_quality_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
@@ -805,6 +824,90 @@ class DetailedReportService:
                 y=1.02,
                 xanchor="right",
                 x=1
+            )
+        )
+        
+        return fig 
+
+    def _generate_sackoff_agua_chart(self) -> go.Figure:
+        """Genera gráfico de sackoff vs dosis de agua con y sin Adiflow"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        fig = go.Figure()
+        
+        # Scatter plot para Con Adiflow
+        if not df_con_adiflow.empty and 'peso_agua_kg' in df_con_adiflow.columns:
+            fig.add_trace(go.Scatter(
+                x=df_con_adiflow['peso_agua_kg'],
+                y=df_con_adiflow['sackoff_por_orden_produccion'],
+                mode='markers',
+                name='Con Adiflow',
+                marker=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    size=8,
+                    opacity=0.7
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Peso Agua: %{x:.1f} kg<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Scatter plot para Sin Adiflow
+        if not df_sin_adiflow.empty and 'peso_agua_kg' in df_sin_adiflow.columns:
+            fig.add_trace(go.Scatter(
+                x=df_sin_adiflow['peso_agua_kg'],
+                y=df_sin_adiflow['sackoff_por_orden_produccion'],
+                mode='markers',
+                name='Sin Adiflow',
+                marker=dict(
+                    color='#666666',  # PANTONE 426 U
+                    size=8,
+                    opacity=0.7
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Peso Agua: %{x:.1f} kg<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea de referencia para sackoff óptimo (-0.3%)
+        fig.add_hline(
+            y=-0.3,
+            line_dash="dash",
+            line_color="#1A494C",  # PANTONE 175-16 U
+            annotation_text="Sackoff Óptimo (-0.3%)",
+            annotation_position="top right",
+            line_width=2
+        )
+        
+        fig.update_layout(
+            title={
+                'text': 'Sackoff vs Dosis de Agua: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Peso Agua (kg)',
+            yaxis_title='Sackoff (%)',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9'
+            ),
+            height=500,
+            showlegend=True,
+            legend=dict(
+                x=0.02,
+                y=0.98,
+                bgcolor='rgba(255,255,255,0.8)',
+                bordercolor='#C9C9C9',
+                borderwidth=1
             )
         )
         

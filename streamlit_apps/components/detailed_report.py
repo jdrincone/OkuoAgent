@@ -247,39 +247,36 @@ def render_detailed_report_page():
         st.write(report['resumen_ejecutivo'])
         
         # Métricas clave con tooltips profesionales
-        st.subheader("KPIs Principales")
+        st.subheader("📊 KPIs Principales")
         
         col1, col2, col3 = st.columns(3)
         metricas = report['metricas_clave']
         
         with col1:
-            create_metric_with_tooltip(
-                title="Diferencia de Toneladas",
-                value=f"{metricas['diferencia_toneladas']:.1f} ton",
-                tooltip_text="<strong>¿Qué significa?</strong><br>Diferencia entre toneladas planificadas y producidas. <strong>Más cercano a cero es mejor</strong>. Valores negativos grandes indican ineficiencia en la producción.",
-                icon="⚖️"
-            )
+            st.markdown(f"""
+            **DIFERENCIA DE TONELADAS**  
+            **{metricas['diferencia_toneladas']:.1f} ton**  
+            <span style='color: #1C8074;'>⚖️</span>
+            """, unsafe_allow_html=True)
         
         with col2:
-            create_metric_with_tooltip(
-                title="Sackoff",
-                value=f"{metricas['sackoff_total']:.2f}%",
-                tooltip_text="<strong>¿Qué significa?</strong><br>Pérdidas de producción durante el proceso. <strong>-0.3% es el nivel óptimo</strong>. Valores por debajo de -0.3% indican la necesidad de mejorar los procesos de peletización.",
-                icon="📉"
-            )
+            st.markdown(f"""
+            **SACKOFF**  
+            **{metricas['sackoff_total']:.2f}%**  
+            <span style='color: #1C8074;'>📉</span>
+            """, unsafe_allow_html=True)
         
         with col3:
-            create_metric_with_tooltip(
-                title="Durabilidad",
-                value=f"{metricas['durabilidad_promedio']:.1f}%",
-                tooltip_text="<strong>¿Qué significa?</strong><br>Resistencia del pellet al manejo y transporte. <strong>&gt;90% es bueno</strong>, <strong>&lt;85% requiere mejora</strong> en el proceso.",
-                icon="📊"
-            )
+            st.markdown(f"""
+            **DURABILIDAD**  
+            **{metricas['durabilidad_promedio']:.1f}%**  
+            <span style='color: #1C8074;'>📊</span>
+            """, unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Análisis detallado
-        st.subheader("🔍 Análisis Detallado")
+        # Comportamiento semanal
+        st.subheader("Comportamiento semanal")
         
         # Análisis de Producción
         with st.expander("📈 Análisis de Producción", expanded=True):
@@ -287,7 +284,7 @@ def render_detailed_report_page():
             
             # Mostrar gráfico de sackoff por semana con y sin Adiflow si está disponible
             if 'graficos' in report and 'sackoff_adiflow' in report['graficos']:
-                st.subheader("📊 Comportamiento del Sackoff por Semana: Con vs Sin Adiflow")
+                st.subheader("Tendencia del Sackoff por Semana: Con vs Sin Adiflow")
                 st.plotly_chart(report['graficos']['sackoff_adiflow'], use_container_width=True)
                 
                 # Agregar explicación de la gráfica
@@ -302,7 +299,7 @@ def render_detailed_report_page():
             
             # Mostrar gráfico de toneladas por semana con y sin Adiflow si está disponible
             if 'graficos' in report and 'toneladas_adiflow' in report['graficos']:
-                st.subheader("📈 Tendencia de Toneladas Producidas por Semana: Con vs Sin Adiflow")
+                st.subheader("Tendencia de Toneladas Producidas por Semana: Con vs Sin Adiflow")
                 st.plotly_chart(report['graficos']['toneladas_adiflow'], use_container_width=True)
                 
                 # Agregar explicación de la gráfica
@@ -313,6 +310,22 @@ def render_detailed_report_page():
                 - **Línea punteada**: Promedio semanal total como referencia
                 - **Eje X**: Rango de fechas de cada semana (dd/mm - dd/mm)
                 - **Objetivo**: Identificar el impacto del Adiflow en el volumen de producción semanal
+                """)
+            
+            # Mostrar gráfico de sackoff vs dosis de agua si está disponible
+            if 'graficos' in report and 'sackoff_agua' in report['graficos']:
+                st.subheader("💧 Sackoff vs Dosis de Agua: Con vs Sin Adiflow")
+                st.plotly_chart(report['graficos']['sackoff_agua'], use_container_width=True)
+                
+                # Agregar explicación de la gráfica
+                st.info("""
+                **Interpretación de la gráfica:**
+                - **Puntos verdes**: Órdenes con Adiflow (sackoff vs peso de agua)
+                - **Puntos grises**: Órdenes sin Adiflow (sackoff vs peso de agua)
+                - **Línea punteada**: Nivel óptimo de sackoff (-0.3%)
+                - **Eje X**: Peso de agua utilizado (kg)
+                - **Eje Y**: Sackoff por orden de producción (%)
+                - **Objetivo**: Identificar la relación entre dosis de agua y pérdidas de producción
                 """)
         
         # Análisis de Calidad
@@ -331,37 +344,6 @@ def render_detailed_report_page():
             if 'graficos' in report and 'diferencia_toneladas' in report['graficos']:
                 st.plotly_chart(report['graficos']['diferencia_toneladas'], use_container_width=True)
         
-        # Comparaciones temporales
-        if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:
-            st.subheader("📅 Comparaciones Temporales")
-            
-            comparisons = report['comparaciones_temporales']['mes_actual_vs_anterior']
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                if 'diferencia_toneladas' in comparisons:
-                    st.metric(
-                        "Diferencia de Toneladas", 
-                        f"{comparisons['diferencia_toneladas']['actual']:.1f} ton",
-                        f"{comparisons['diferencia_toneladas']['cambio_pct']}"
-                    )
-            
-            with col2:
-                if 'sackoff_total' in comparisons:
-                    st.metric(
-                        "Sackoff", 
-                        f"{comparisons['sackoff_total']['actual']:.2f}%",
-                        f"{comparisons['sackoff_total']['cambio_pct']}"
-                    )
-            
-            with col3:
-                if 'durabilidad_promedio' in comparisons:
-                    st.metric(
-                        "Durabilidad", 
-                        f"{comparisons['durabilidad_promedio']['actual']:.1f}%",
-                        f"{comparisons['durabilidad_promedio']['cambio_pct']}"
-                    )
         
         # Correlaciones
         if 'correlaciones' in report and report['correlaciones']:
