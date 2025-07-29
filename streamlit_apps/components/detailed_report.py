@@ -501,7 +501,7 @@ def generate_pdf_report(report: Dict) -> bytes:
     title_style = ParagraphStyle(
         'CorporateTitle',
         parent=styles['Heading1'],
-        fontSize=28,
+        fontSize=24,
         textColor=colors.HexColor(corporate_colors['primary']),
         alignment=TA_CENTER,
         spaceAfter=30,
@@ -551,17 +551,27 @@ def generate_pdf_report(report: Dict) -> bytes:
         fontName='Helvetica-Bold'
     )
     
+    # Configurar locale para fechas en español
+    import locale
+    try:
+        locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+    except:
+        try:
+            locale.setlocale(locale.LC_TIME, 'Spanish_Spain.1252')
+        except:
+            pass  # Si no se puede configurar, usar formato por defecto
+    
     # Contenido del PDF
     story = []
     
     # Portada profesional
-    story.append(Paragraph("📊 INFORME DETALLADO DE PRODUCCIÓN", title_style))
+    story.append(Paragraph("📊 INFORME DETALLADO DE PRODUCCIÓN Y CALIDAD", title_style))
     story.append(Spacer(1, 30))
     story.append(Paragraph("Análisis Integral de Métricas Operativas", subtitle_style))
     story.append(Spacer(1, 40))
     story.append(Paragraph(f"<b>Fecha de Generación:</b> {datetime.now().strftime('%d de %B de %Y a las %H:%M')}", highlight_style))
     story.append(Spacer(1, 20))
-    story.append(Paragraph("Sistema OkuoAgent - Análisis Inteligente de Datos", normal_style))
+    story.append(Paragraph("Sistema Okuo Agent - Análisis Inteligente de Datos", normal_style))
     story.append(PageBreak())
     
     # Índice
@@ -587,7 +597,7 @@ def generate_pdf_report(report: Dict) -> bytes:
     
     metricas = report['metricas_clave']
     kpi_data = [
-        ['<b>Métrica</b>', '<b>Valor</b>', '<b>Estado</b>'],
+        ['Métrica', 'Valor', 'Estado'],
         ['Diferencia de Toneladas', f"{metricas['diferencia_toneladas']:.1f} ton", 
          '🟢 Excelente' if abs(metricas['diferencia_toneladas']) <= 20 else '🟡 Bueno' if abs(metricas['diferencia_toneladas']) <= 50 else '🔴 Requiere Mejora'],
         ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%", 
@@ -709,7 +719,7 @@ def generate_pdf_report(report: Dict) -> bytes:
         story.append(Paragraph("📅 COMPARACIONES TEMPORALES", subtitle_style))
         
         comparisons = report['comparaciones_temporales']['mes_actual_vs_anterior']
-        comp_data = [['<b>Métrica</b>', '<b>Mes Actual</b>', '<b>Mes Anterior</b>', '<b>Cambio</b>', '<b>Tendencia</b>']]
+        comp_data = [['Métrica', 'Mes Actual', 'Mes Anterior', 'Cambio', 'Tendencia']]
         
         for metric, data in comparisons.items():
             metric_name = metric.replace('_', ' ').title()
@@ -752,21 +762,20 @@ def generate_pdf_report(report: Dict) -> bytes:
         
         for corr in report['correlaciones']:
             impact_icon = "🟢" if corr['impacto'] == 'positivo' else "🔴" if corr['impacto'] == 'negativo' else "🟡"
-            story.append(Paragraph(f"{impact_icon} <b>{corr['factor']}</b>: {corr['descripcion']}", normal_style))
+            story.append(Paragraph(f"{impact_icon} {corr['factor']}: {corr['descripcion']}", normal_style))
         
         story.append(Spacer(1, 15))
     
     # Recomendaciones
     story.append(Paragraph("💡 RECOMENDACIONES", subtitle_style))
     for i, rec in enumerate(report['recomendaciones'], 1):
-        story.append(Paragraph(f"<b>{i}.</b> {rec}", normal_style))
+        story.append(Paragraph(f"{i}. {rec}", normal_style))
     
     story.append(Spacer(1, 20))
     
     # Pie de página profesional
     story.append(Paragraph("─" * 50, normal_style))
-    story.append(Paragraph("Sistema OkuoAgent - Análisis Inteligente de Datos de Producción", highlight_style))
-    story.append(Paragraph("Informe generado automáticamente con tecnología de análisis avanzado", normal_style))
+    story.append(Paragraph("Sistema Okuo Agent - Análisis Inteligente de Datos de Producción y Calidad", highlight_style))
     
     # Generar PDF
     doc.build(story)
