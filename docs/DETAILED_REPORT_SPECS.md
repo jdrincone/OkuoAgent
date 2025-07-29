@@ -136,7 +136,6 @@ class DetailedReportAgent:
 - Resumen Ejecutivo (máximo 3 párrafos)
 - Análisis de Producción (métricas clave, tendencias)
 - Análisis de Calidad (durabilidad, dureza, finos)
-- Análisis de Eficiencia (sackoff, rendimiento)
 - Recomendaciones Estratégicas
 
 ### 2. TIPO DE ANÁLISIS:
@@ -153,7 +152,6 @@ class DetailedReportAgent:
 ### **KPIs Calculados**
 
 #### **Métricas Principales:**
-- **Eficiencia de Producción:** `(toneladas_producidas / toneladas_a_producir) * 100`
 - **Sackoff Total:** Pérdida total incluyendo anulaciones
 - **Durabilidad Promedio:** Promedio de durabilidad por orden
 - **Dureza Promedio:** Promedio de dureza por orden
@@ -164,11 +162,11 @@ class DetailedReportAgent:
 def _calculate_comparisons(self, current_kpis: Dict, previous_kpis: Dict) -> Dict:
     """Calcula comparaciones entre períodos"""
     return {
-        'eficiencia': {
-            'actual': current_kpis['eficiencia'],
-            'anterior': previous_kpis['eficiencia'],
-            'cambio': f"{((current_kpis['eficiencia'] - previous_kpis['eficiencia']) / previous_kpis['eficiencia'] * 100):+.1f}%",
-            'tendencia': 'subiendo' if current_kpis['eficiencia'] > previous_kpis['eficiencia'] else 'bajando'
+        'sackoff': {
+            'actual': current_kpis['sackoff'],
+            'anterior': previous_kpis['sackoff'],
+            'cambio': f"{((current_kpis['sackoff'] - previous_kpis['sackoff']) / previous_kpis['sackoff'] * 100):+.1f}%",
+            'tendencia': 'subiendo' if current_kpis['sackoff'] > previous_kpis['sackoff'] else 'bajando'
         }
         # ... más métricas
     }
@@ -197,13 +195,13 @@ def _analyze_adiflow_impact(self, df: pd.DataFrame) -> Dict:
     con_adiflow = df[df['tiene_adiflow'] == 'Si']
     sin_adiflow = df[df['tiene_adiflow'] == 'No']
     
-    eficiencia_con = con_adiflow['eficiencia'].mean()
-    eficiencia_sin = sin_adiflow['eficiencia'].mean()
+    sackoff_con = con_adiflow['sackoff'].mean()
+    esackoff_sin = sin_adiflow['sackoff'].mean()
     
     return {
         'factor': 'Uso de Adiflow',
-        'impacto': 'positivo' if eficiencia_con > eficiencia_sin else 'negativo',
-        'diferencia': f"{eficiencia_con - eficiencia_sin:.1f}%"
+        'impacto': 'positivo' if sackoff_con > esackoff_sin else 'negativo',
+        'diferencia': f"{sackoff_con - esackoff_sin:.1f}%"
     }
 ```
 
@@ -325,7 +323,6 @@ def _apply_corporate_colors(fig: go.Figure) -> go.Figure:
 
 ### **2. Análisis Operacional**
 **Usuario:** Supervisor de Planta
-**Necesidad:** Análisis detallado de eficiencia y calidad
 **Resultado:** Gráficos interactivos con correlaciones y métricas por producto
 
 ### **3. Análisis de Calidad**
@@ -367,7 +364,6 @@ def generate_report(self, df: pd.DataFrame) -> Optional[Dict]:
 ## 📈 Métricas y KPIs del Sistema
 
 ### **KPIs del Informe**
-- **Eficiencia de Producción:** Porcentaje de producción vs planificado
 - **Sackoff Total:** Pérdida total por orden de producción
 - **Durabilidad Promedio:** Calidad promedio del producto
 - **Dureza Promedio:** Resistencia física promedio

@@ -50,8 +50,7 @@
 
 #### **Análisis de Correlaciones**
 - **Durabilidad vs Dureza** - Correlación entre métricas de calidad
-- **Uso de Adiflow** - Impacto en eficiencia y calidad
-- **Eficiencia vs Sackoff** - Relación entre producción y pérdidas
+- **Uso de Adiflow** - Impacto en rendimiento y calidad
 
 #### **Métricas Avanzadas**
 - **KPIs calculados** usando lógica existente del dashboard principal
@@ -62,16 +61,14 @@
 
 #### **Estructura del Informe**
 1. **Resumen Ejecutivo** - KPIs principales y tendencias
-2. **Análisis de Producción** - Métricas de eficiencia y rendimiento
+2. **Análisis de Producción** - Métricas de calidad y rendimiento
 3. **Análisis de Calidad** - Durabilidad, dureza y finos
-4. **Análisis de Eficiencia** - Sackoff y correlaciones
 5. **Comparaciones Temporales** - Mes actual vs anterior
 6. **Recomendaciones** - Acciones estratégicas basadas en datos
 
 #### **Gráficos Integrados**
 - **Gráfico de Producción** - Tendencias diarias con colores corporativos
 - **Gráfico de Calidad** - Métricas por producto
-- **Gráfico de Eficiencia** - Correlaciones y patrones
 
 ### 🔧 **Correcciones y Optimizaciones**
 
@@ -142,7 +139,6 @@ pip install kaleido  # Para generación de imágenes en PDF
 ### 📊 **Métricas del Informe**
 
 #### **KPIs Principales**
-- **Eficiencia de Producción** (%)
 - **Sackoff Total** (%)
 - **Durabilidad Promedio** (%)
 - **Dureza Promedio** (%)
@@ -154,7 +150,7 @@ pip install kaleido  # Para generación de imágenes en PDF
 - **Proyecciones** basadas en datos históricos
 
 #### **Correlaciones Analizadas**
-- **Calidad vs Eficiencia** - Impacto en producción
+- **Calidad vs Rendimiento** - Impacto en producción
 - **Adiflow vs Rendimiento** - Efectividad del aditivo
 - **Dureza vs Durabilidad** - Relación entre métricas de calidad
 
@@ -171,7 +167,6 @@ pip install kaleido  # Para generación de imágenes en PDF
 - **Comparaciones temporales** detalladas
 
 #### **Para Operaciones**
-- **Métricas de eficiencia** por planta y producto
 - **Identificación de oportunidades** de mejora
 - **Alertas y recomendaciones** operacionales
 

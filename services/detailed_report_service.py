@@ -88,7 +88,7 @@ class DetailedReportService:
         """Calcula KPIs para un período específico"""
         if df.empty:
             return {
-                'eficiencia': 0,
+                'diferencia_toneladas': 0,
                 'sackoff_total': 0,
                 'durabilidad_promedio': 0,
                 'dureza_promedio': 0,
@@ -98,10 +98,8 @@ class DetailedReportService:
                 'toneladas_a_producir': 0
             }
         
-        # Calcular eficiencia
-        total_producido = df['toneladas_producidas'].sum()
-        total_a_producir = df['toneladas_a_producir'].sum()
-        eficiencia = (total_producido / total_a_producir * 100) if total_a_producir > 0 else 0
+        # Calcular diferencia de toneladas
+        diferencia_toneladas = compute_metric_diferencia_toneladas(df)
         
         # Calcular sackoff
         sackoff = compute_metric_sackoff(df)
@@ -112,21 +110,21 @@ class DetailedReportService:
         finos = df['finos_pct_qa_agroindustrial'].mean()
         
         return {
-            'eficiencia': eficiencia,
+            'diferencia_toneladas': diferencia_toneladas,
             'sackoff_total': sackoff,
             'durabilidad_promedio': durabilidad,
             'dureza_promedio': dureza,
             'finos_promedio': finos,
             'total_ordenes': len(df),
-            'toneladas_producidas': total_producido,
-            'toneladas_a_producir': total_a_producir
+            'toneladas_producidas': df['toneladas_producidas'].sum(),
+            'toneladas_a_producir': df['toneladas_a_producir'].sum()
         }
     
     def _calculate_comparisons(self, current: Dict, previous: Dict) -> Dict:
         """Calcula comparaciones entre períodos"""
         comparisons = {}
         
-        for metric in ['eficiencia', 'sackoff_total', 'durabilidad_promedio', 'dureza_promedio', 'finos_promedio']:
+        for metric in ['diferencia_toneladas', 'sackoff_total', 'durabilidad_promedio', 'dureza_promedio', 'finos_promedio']:
             current_val = current.get(metric, 0)
             previous_val = previous.get(metric, 0)
             
@@ -170,26 +168,26 @@ class DetailedReportService:
             sin_adiflow = self.df[self.df['tiene_adiflow'] == False]
             
             if not con_adiflow.empty and not sin_adiflow.empty:
-                eficiencia_con = (con_adiflow['toneladas_producidas'].sum() / con_adiflow['toneladas_a_producir'].sum() * 100) if con_adiflow['toneladas_a_producir'].sum() > 0 else 0
-                eficiencia_sin = (sin_adiflow['toneladas_producidas'].sum() / sin_adiflow['toneladas_a_producir'].sum() * 100) if sin_adiflow['toneladas_a_producir'].sum() > 0 else 0
+                diferencia_con = compute_metric_diferencia_toneladas(con_adiflow)
+                diferencia_sin = compute_metric_diferencia_toneladas(sin_adiflow)
                 
-                mejora = eficiencia_con - eficiencia_sin
+                mejora = diferencia_sin - diferencia_con  # Menor diferencia es mejor
                 correlations.append({
                     'factor': 'Uso de Adiflow',
                     'impacto': 'positivo' if mejora > 0 else 'negativo',
-                    'descripcion': f"Las órdenes con Adiflow muestran {abs(mejora):.1f}% {'mejor' if mejora > 0 else 'peor'} eficiencia"
+                    'descripcion': f"Las órdenes con Adiflow muestran {abs(mejora):.2f} toneladas {'menor' if mejora > 0 else 'mayor'} diferencia"
                 })
         
-        # Correlación entre eficiencia y sackoff
-        self.df['eficiencia_orden'] = (self.df['toneladas_producidas'] / self.df['toneladas_a_producir'] * 100).fillna(0)
+        # Correlación entre diferencia de toneladas y sackoff
         if 'sackoff_por_orden_produccion' in self.df.columns:
-            corr = self.df['eficiencia_orden'].corr(self.df['sackoff_por_orden_produccion'])
+            self.df['diferencia_por_orden'] = (self.df['toneladas_a_producir'] - self.df['toneladas_producidas'] - self.df['toneladas_anuladas']).fillna(0)
+            corr = self.df['diferencia_por_orden'].corr(self.df['sackoff_por_orden_produccion'])
             if not pd.isna(corr):
                 correlations.append({
-                    'factor': 'Eficiencia vs Sackoff',
+                    'factor': 'Diferencia vs Sackoff',
                     'correlacion': round(corr, 3),
-                    'impacto': 'negativo' if corr < -0.3 else 'positivo' if corr > 0.3 else 'bajo',
-                    'descripcion': f"Correlación de {corr:.3f} entre eficiencia y sackoff"
+                    'impacto': 'positivo' if corr > 0.3 else 'negativo' if corr < -0.3 else 'bajo',
+                    'descripcion': f"Correlación de {corr:.3f} entre diferencia de toneladas y sackoff"
                 })
         
         return correlations
@@ -198,11 +196,11 @@ class DetailedReportService:
         """Genera alertas basadas en las comparaciones"""
         alertas = []
         
-        # Alertas de eficiencia
-        if comparisons.get('eficiencia', {}).get('actual', 0) < 90:
+        # Alertas de diferencia de toneladas
+        if comparisons.get('diferencia_toneladas', {}).get('actual', 0) > 100:
             alertas.append({
                 'tipo': 'warning',
-                'mensaje': f"Eficiencia baja: {comparisons['eficiencia']['actual']:.1f}% - Requiere atención inmediata"
+                'mensaje': f"Diferencia de toneladas alta: {comparisons['diferencia_toneladas']['actual']:.1f} toneladas - Requiere atención inmediata"
             })
         
         # Alertas de sackoff
@@ -220,10 +218,10 @@ class DetailedReportService:
             })
         
         # Alertas positivas
-        if comparisons.get('eficiencia', {}).get('tendencia') == 'subiendo':
+        if comparisons.get('diferencia_toneladas', {}).get('tendencia') == 'bajando':
             alertas.append({
                 'tipo': 'info',
-                'mensaje': f"Eficiencia mejorando: +{comparisons['eficiencia']['cambio_pct']} vs mes anterior"
+                'mensaje': f"Diferencia de toneladas mejorando: {comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior"
             })
         
         return alertas
@@ -271,21 +269,21 @@ class DetailedReportService:
             "resumen_ejecutivo": self._generate_executive_summary(current_month_kpis, month_comparisons),
             "analisis_produccion": self._generate_production_analysis(current_month_kpis, month_comparisons),
             "analisis_calidad": self._generate_quality_analysis(current_month_kpis, month_comparisons),
-            "analisis_eficiencia": self._generate_efficiency_analysis(current_month_kpis, month_comparisons),
+            "analisis_diferencia_toneladas": self._generate_efficiency_analysis(current_month_kpis, month_comparisons),
             "recomendaciones": recomendaciones,
             "metricas_clave": current_month_kpis,
             "comparaciones_temporales": {
                 "mes_actual_vs_anterior": month_comparisons,
                 "semana_actual": {
-                    "eficiencia": current_week_kpis['eficiencia'],
+                    "diferencia_toneladas": current_week_kpis['diferencia_toneladas'],
                     "sackoff": current_week_kpis['sackoff_total'],
                     "durabilidad": current_week_kpis['durabilidad_promedio'],
-                    "tendencia": week_comparisons['eficiencia']['tendencia']
+                    "tendencia": week_comparisons['diferencia_toneladas']['tendencia']
                 }
             },
             "correlaciones": correlations,
             "tendencias": {
-                "eficiencia_tendencia": month_comparisons['eficiencia']['tendencia'],
+                "diferencia_toneladas_tendencia": month_comparisons['diferencia_toneladas']['tendencia'],
                 "calidad_tendencia": month_comparisons['durabilidad_promedio']['tendencia'],
                 "sackoff_tendencia": month_comparisons['sackoff_total']['tendencia']
             },
@@ -293,7 +291,7 @@ class DetailedReportService:
             "graficos": {
                 "produccion": production_chart,
                 "calidad": quality_chart,
-                "eficiencia": efficiency_chart
+                "diferencia_toneladas": efficiency_chart
             }
         }
         
@@ -302,27 +300,27 @@ class DetailedReportService:
     def _generate_executive_summary(self, current_kpis: Dict, comparisons: Dict) -> str:
         """Genera el resumen ejecutivo"""
         
-        eficiencia = current_kpis['eficiencia']
+        diferencia_toneladas = current_kpis['diferencia_toneladas']
         sackoff = current_kpis['sackoff_total']
         durabilidad = current_kpis['durabilidad_promedio']
         total_ordenes = current_kpis['total_ordenes']
         
-        eficiencia_trend = comparisons['eficiencia']['tendencia']
-        eficiencia_change = comparisons['eficiencia']['cambio_pct']
+        diferencia_trend = comparisons['diferencia_toneladas']['tendencia']
+        diferencia_change = comparisons['diferencia_toneladas']['cambio_pct']
         
         return f"""
         El presente informe detalla el análisis integral de la producción de alimentos para animales durante el mes actual. 
-        Se procesaron {total_ordenes} órdenes de producción con una eficiencia general del {eficiencia:.1f}%, 
-        demostrando un rendimiento {'sólido' if eficiencia >= 90 else 'que requiere mejora'} en las operaciones de peletización.
+        Se procesaron {total_ordenes} órdenes de producción con una diferencia de toneladas de {diferencia_toneladas:.1f} toneladas, 
+        demostrando un rendimiento {'sólido' if diferencia_toneladas <= 50 else 'que requiere mejora'} en las operaciones de peletización.
         
-        La eficiencia muestra una tendencia {eficiencia_trend} ({eficiencia_change}) comparada con el mes anterior, 
-        indicando {'mejoras significativas' if eficiencia_trend == 'subiendo' else 'áreas de oportunidad' if eficiencia_trend == 'bajando' else 'estabilidad'} 
+        La diferencia de toneladas muestra una tendencia {diferencia_trend} ({diferencia_change}) comparada con el mes anterior, 
+        indicando {'mejoras significativas' if diferencia_trend == 'bajando' else 'áreas de oportunidad' if diferencia_trend == 'subiendo' else 'estabilidad'} 
         en los procesos operativos. La calidad del producto se mantiene en niveles {'satisfactorios' if durabilidad >= 90 else 'aceptables' if durabilidad >= 85 else 'que requieren atención'}, 
         con una durabilidad promedio del {durabilidad:.1f}%.
         
         El sackoff total del {sackoff:.2f}% {'indica una gestión eficiente' if sackoff <= 3 else 'requiere optimización'} 
         de las pérdidas de producción. Se identificaron oportunidades de mejora en la optimización de procesos 
-        y la implementación de controles de calidad más rigurosos para maximizar la eficiencia operativa.
+        y la implementación de controles de calidad más rigurosos para optimizar los procesos operativos.
         """
     
     def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
@@ -332,14 +330,14 @@ class DetailedReportService:
         ANÁLISIS DE PRODUCCIÓN:
         
         • Volumen de Producción: Se procesaron {current_kpis['total_ordenes']} órdenes durante el mes actual
-        • Eficiencia Operativa: {current_kpis['eficiencia']:.1f}% de eficiencia general ({comparisons['eficiencia']['cambio_pct']} vs mes anterior)
+        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
         • Gestión de Pérdidas: Sackoff total del {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
         • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f} toneladas
         
         TENDENCIAS IDENTIFICADAS:
-        • La eficiencia está {comparisons['eficiencia']['tendencia']} ({comparisons['eficiencia']['cambio_pct']})
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} ({comparisons['diferencia_toneladas']['cambio_pct']})
         • El sackoff está {comparisons['sackoff_total']['tendencia']} ({comparisons['sackoff_total']['cambio_pct']})
-        • La producción muestra {'estabilidad' if abs(float(comparisons['eficiencia']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
+        • La producción muestra {'estabilidad' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
         """
     
     def _generate_quality_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
@@ -360,20 +358,20 @@ class DetailedReportService:
         """
     
     def _generate_efficiency_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
-        """Genera el análisis de eficiencia"""
+        """Genera el análisis de diferencia de toneladas"""
         
         return f"""
-        ANÁLISIS DE EFICIENCIA:
+        ANÁLISIS DE DIFERENCIA DE TONELADAS:
         
-        • Eficiencia General: {current_kpis['eficiencia']:.1f}% ({comparisons['eficiencia']['cambio_pct']} vs mes anterior)
+        • Diferencia de Toneladas: {current_kpis['diferencia_toneladas']:.1f} toneladas ({comparisons['diferencia_toneladas']['cambio_pct']} vs mes anterior)
         • Sackoff Total: {current_kpis['sackoff_total']:.2f}% ({comparisons['sackoff_total']['cambio_pct']} vs mes anterior)
         • Total Órdenes: {current_kpis['total_ordenes']}
         • Toneladas Producidas: {current_kpis['toneladas_producidas']:.1f}
         
-        FACTORES DE EFICIENCIA:
-        • La eficiencia está {comparisons['eficiencia']['tendencia']} de manera {'significativa' if abs(float(comparisons['eficiencia']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}
+        FACTORES DE DIFERENCIA:
+        • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} de manera {'significativa' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 5 else 'moderada'}
         • El sackoff está {comparisons['sackoff_total']['tendencia']} {'de manera preocupante' if comparisons['sackoff_total']['tendencia'] == 'subiendo' else 'de manera positiva'}
-        • Se identifican oportunidades de optimización en {'todos los procesos' if current_kpis['eficiencia'] < 90 else 'procesos específicos'}
+        • Se identifican oportunidades de optimización en {'todos los procesos' if current_kpis['diferencia_toneladas'] > 100 else 'procesos específicos'}
         """
     
     def _generate_recommendations(self, comparisons: Dict, correlations: List[Dict]) -> List[str]:
@@ -381,8 +379,8 @@ class DetailedReportService:
         
         recomendaciones = []
         
-        # Recomendaciones basadas en eficiencia
-        if comparisons['eficiencia']['tendencia'] == 'bajando':
+        # Recomendaciones basadas en diferencia de toneladas
+        if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo':
             recomendaciones.append("Implementar controles de calidad más frecuentes para mejorar la consistencia")
             recomendaciones.append("Revisar y optimizar parámetros de peletización para reducir el sackoff")
         
@@ -395,14 +393,15 @@ class DetailedReportService:
         for corr in correlations:
             if corr['factor'] == 'Uso de Adiflow' and corr['impacto'] == 'positivo':
                 recomendaciones.append("Capacitar al personal en el uso de Adiflow para maximizar su efectividad")
-            elif corr['factor'] == 'Eficiencia vs Sackoff' and corr['impacto'] == 'negativo':
+            elif corr['factor'] == 'Diferencia vs Sackoff' and corr['impacto'] == 'negativo':
                 recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
         
         # Recomendaciones generales
         recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
-        recomendaciones.append("Implementar un sistema de alertas tempranas para desviaciones de calidad")
+        recomendaciones.append("Implementar un sistema de alertas automáticas para desviaciones significativas")
+        recomendaciones.append("Desarrollar un plan de mejora continua basado en los datos históricos")
         
-        return recomendaciones[:5]  # Limitar a 5 recomendaciones 
+        return recomendaciones
     
     def _generate_production_chart(self) -> go.Figure:
         """Genera gráfico de tendencia de producción con colores corporativos"""
@@ -524,18 +523,18 @@ class DetailedReportService:
         return fig
     
     def _generate_efficiency_chart(self) -> go.Figure:
-        """Genera gráfico de eficiencia vs sackoff con colores corporativos"""
+        """Genera gráfico de diferencia de toneladas vs sackoff con colores corporativos"""
         if self.df.empty:
             return go.Figure()
         
-        # Calcular eficiencia por orden
-        self.df['eficiencia_orden'] = (self.df['toneladas_producidas'] / self.df['toneladas_a_producir'] * 100).fillna(0)
+        # Calcular diferencia de toneladas por orden
+        self.df['diferencia_por_orden'] = (self.df['toneladas_a_producir'] - self.df['toneladas_producidas'] - self.df['toneladas_anuladas']).fillna(0)
         
         fig = go.Figure()
         
-        # Scatter plot de eficiencia vs sackoff
+        # Scatter plot de diferencia de toneladas vs sackoff
         fig.add_trace(go.Scatter(
-            x=self.df['eficiencia_orden'],
+            x=self.df['diferencia_por_orden'],
             y=self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df),
             mode='markers',
             name='Órdenes',
@@ -545,17 +544,17 @@ class DetailedReportService:
                 opacity=0.7
             ),
             text=self.df['nombre_producto'],
-            hovertemplate='<b>%{text}</b><br>Eficiencia: %{x:.1f}%<br>Sackoff: %{y:.2f}%<extra></extra>'
+            hovertemplate='<b>%{text}</b><br>Diferencia: %{x:.1f} ton<br>Sackoff: %{y:.2f}%<extra></extra>'
         ))
         
         # Línea de tendencia
         if len(self.df) > 1:
-            z = np.polyfit(self.df['eficiencia_orden'], 
+            z = np.polyfit(self.df['diferencia_por_orden'], 
                           self.df['sackoff_por_orden_produccion'] if 'sackoff_por_orden_produccion' in self.df.columns else [0] * len(self.df), 1)
             p = np.poly1d(z)
             fig.add_trace(go.Scatter(
-                x=self.df['eficiencia_orden'],
-                y=p(self.df['eficiencia_orden']),
+                x=self.df['diferencia_por_orden'],
+                y=p(self.df['diferencia_por_orden']),
                 mode='lines',
                 name='Tendencia',
                 line=dict(
@@ -567,12 +566,12 @@ class DetailedReportService:
         
         fig.update_layout(
             title={
-                'text': 'Eficiencia vs Sackoff por Orden',
+                'text': 'Diferencia de Toneladas vs Sackoff por Orden',
                 'x': 0.5,
                 'xanchor': 'center',
                 'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
             },
-            xaxis_title='Eficiencia (%)',
+            xaxis_title='Diferencia de Toneladas',
             yaxis_title='Sackoff (%)',
             plot_bgcolor='white',
             paper_bgcolor='white',

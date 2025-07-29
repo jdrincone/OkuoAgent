@@ -178,9 +178,6 @@ class KPIService:
         
     def get_sackoff_metrics(self, df: pd.DataFrame) -> Dict:
         """Obtiene métricas de sackoff."""
-        
-    def get_efficiency_metrics(self, df: pd.DataFrame) -> Dict:
-        """Obtiene métricas de eficiencia."""
 ```
 
 ## 📊 Modelos de Datos
@@ -245,16 +242,12 @@ columns:
     business_meaning: "Cuándo se realizó la producción"
 
 calculated_metrics:
-  - name: "eficiencia_produccion"
-    formula: "(toneladas_producidas / toneladas_a_producir) * 100"
-    description: "Porcentaje de eficiencia de producción"
-
+ 
 business_rules:
   - "Las métricas de QA agroindustrial son las medidas oficiales"
   - "El aditivo Adiflow puede afectar significativamente la calidad"
 
 key_metrics:
-  - "Eficiencia de producción (meta: >90%)"
   - "Calidad QA (durabilidad >90%, dureza 8-12 kg/cm²)"
 
 relationships:

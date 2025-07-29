@@ -57,7 +57,8 @@ class DetailedReportAgent:
         """Genera un informe básico como fallback en caso de error."""
         
         # Calcular métricas básicas
-        eficiencia_general = (df['toneladas_producidas'].sum() / df['toneladas_a_producir'].sum() * 100) if df['toneladas_a_producir'].sum() > 0 else 0
+        from utils.production_metrics import compute_metric_diferencia_toneladas
+        diferencia_toneladas = compute_metric_diferencia_toneladas(df)
         sackoff_total = df['sackoff_por_orden_produccion'].sum() if 'sackoff_por_orden_produccion' in df.columns else 0
         durabilidad_promedio = df['durabilidad_pct_qa_agroindustrial'].mean() if 'durabilidad_pct_qa_agroindustrial' in df.columns else 0
         dureza_promedio = df['dureza_qa_agroindustrial'].mean() if 'dureza_qa_agroindustrial' in df.columns else 0
@@ -65,12 +66,12 @@ class DetailedReportAgent:
         
         return {
             "resumen_ejecutivo": f"Informe básico generado para {len(df)} órdenes de producción.",
-            "analisis_produccion": f"Eficiencia general: {eficiencia_general:.1f}%",
+            "analisis_produccion": f"Diferencia de toneladas: {diferencia_toneladas:.1f} toneladas",
             "analisis_calidad": f"Durabilidad promedio: {durabilidad_promedio:.1f}%",
-            "analisis_eficiencia": f"Sackoff total: {sackoff_total:.2f}%",
+            "analisis_diferencia_toneladas": f"Sackoff total: {sackoff_total:.2f}%",
             "recomendaciones": ["Revisar datos para análisis más detallado"],
             "metricas_clave": {
-                "eficiencia": eficiencia_general,
+                "diferencia_toneladas": diferencia_toneladas,
                 "sackoff_total": sackoff_total,
                 "durabilidad_promedio": durabilidad_promedio,
                 "dureza_promedio": dureza_promedio,
@@ -153,8 +154,8 @@ def render_detailed_report_page():
         metricas = report['metricas_clave']
         
         with col1:
-            st.metric("Eficiencia", f"{metricas['eficiencia']:.1f}%")
-            st.info("**¿Qué significa?** Porcentaje de toneladas producidas vs planificadas. >95% es excelente.")
+            st.metric("Diferencia de Toneladas", f"{metricas['diferencia_toneladas']:.1f} ton")
+            st.info("**¿Qué significa?** Diferencia entre toneladas planificadas y producidas. Menor es mejor.")
         
         with col2:
             st.metric("Sackoff", f"{metricas['sackoff_total']:.2f}%")
@@ -185,13 +186,13 @@ def render_detailed_report_page():
             if 'graficos' in report and 'calidad' in report['graficos']:
                 st.plotly_chart(report['graficos']['calidad'], use_container_width=True)
         
-        # Análisis de Eficiencia
-        with st.expander("⚡ Análisis de Eficiencia", expanded=True):
-            st.write(report['analisis_eficiencia'])
+        # Análisis de Diferencia de Toneladas
+        with st.expander("⚡ Análisis de Diferencia de Toneladas", expanded=True):
+            st.write(report['analisis_diferencia_toneladas'])
             
-            # Mostrar gráfico de eficiencia si está disponible
-            if 'graficos' in report and 'eficiencia' in report['graficos']:
-                st.plotly_chart(report['graficos']['eficiencia'], use_container_width=True)
+            # Mostrar gráfico de diferencia de toneladas si está disponible
+            if 'graficos' in report and 'diferencia_toneladas' in report['graficos']:
+                st.plotly_chart(report['graficos']['diferencia_toneladas'], use_container_width=True)
         
         # Comparaciones temporales
         if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:
@@ -202,11 +203,11 @@ def render_detailed_report_page():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if 'eficiencia' in comparisons:
+                if 'diferencia_toneladas' in comparisons:
                     st.metric(
-                        "Eficiencia", 
-                        f"{comparisons['eficiencia']['actual']:.1f}%",
-                        f"{comparisons['eficiencia']['cambio_pct']}"
+                        "Diferencia de Toneladas", 
+                        f"{comparisons['diferencia_toneladas']['actual']:.1f} ton",
+                        f"{comparisons['diferencia_toneladas']['cambio_pct']}"
                     )
             
             with col2:
@@ -372,7 +373,7 @@ def generate_pdf_report(report: Dict) -> bytes:
     metricas = report['metricas_clave']
     kpi_data = [
         ['Métrica', 'Valor'],
-        ['Eficiencia', f"{metricas['eficiencia']:.1f}%"],
+        ['Diferencia de Toneladas', f"{metricas['diferencia_toneladas']:.1f} ton"],
         ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%"],
         ['Durabilidad Promedio', f"{metricas['durabilidad_promedio']:.1f}%"],
         ['Dureza Promedio', f"{metricas['dureza_promedio']:.1f}%"],
@@ -433,22 +434,22 @@ def generate_pdf_report(report: Dict) -> bytes:
         except Exception as e:
             print(f"Error incluyendo gráfico de calidad: {e}")
     
-    # Análisis de Eficiencia con gráfico
-    story.append(Paragraph("⚡ Análisis de Eficiencia", subtitle_style))
-    story.append(Paragraph(report['analisis_eficiencia'], normal_style))
+    # Análisis de Diferencia de Toneladas con gráfico
+    story.append(Paragraph("⚡ Análisis de Diferencia de Toneladas", subtitle_style))
+    story.append(Paragraph(report['analisis_diferencia_toneladas'], normal_style))
     story.append(Spacer(1, 10))
     
-    # Incluir gráfico de eficiencia si está disponible
-    if 'graficos' in report and 'eficiencia' in report['graficos']:
+    # Incluir gráfico de diferencia de toneladas si está disponible
+    if 'graficos' in report and 'diferencia_toneladas' in report['graficos']:
         try:
-            fig = report['graficos']['eficiencia']
-            img_path = plotly_to_image(fig, 'eficiencia_chart.png')
+            fig = report['graficos']['diferencia_toneladas']
+            img_path = plotly_to_image(fig, 'diferencia_toneladas_chart.png')
             if img_path and os.path.exists(img_path):
                 img = Image(img_path, width=6*inch, height=3*inch)
                 story.append(img)
                 story.append(Spacer(1, 10))
         except Exception as e:
-            print(f"Error incluyendo gráfico de eficiencia: {e}")
+            print(f"Error incluyendo gráfico de diferencia de toneladas: {e}")
     
     # Comparaciones Temporales
     if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:

@@ -123,7 +123,6 @@ Antes de empezar, asegúrate de que:
 
 #### Comparaciones por Categorías
 ```
-"Compara la eficiencia entre plantas"
 "¿Cuál es la diferencia de calidad con y sin Adiflow?"
 "Analiza el rendimiento por producto"
 ```

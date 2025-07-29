@@ -138,9 +138,6 @@ columns:
     business_meaning: "Ultima fecha de actualización del registro esta en formato UTC y debes convertirla a hora colombiana"
 
 calculated_metrics:
-  - name: "eficiencia_produccion"
-    formula: "(toneladas_producidas / toneladas_a_producir) * 100"
-    description: "Porcentaje de eficiencia de producción"
   
   - name: "merma_total"
     formula: "toneladas_anuladas + diferencia_toneladas_por_orden_produccion"
@@ -148,18 +145,15 @@ calculated_metrics:
   
   - name: "rendimiento_materia_prima"
     formula: "toneladas_producidas / toneladas_materia_prima_consumida"
-    description: "Eficiencia en el uso de materia prima"
 
 business_rules:
   - "Las métricas de QA agroindustrial son las medidas oficiales de calidad"
   - "El aditivo Adiflow puede afectar significativamente la calidad del producto"
-  - "Los parámetros de presión y carga afectan la calidad y eficiencia"
-  - "La eficiencia de producción debe estar entre 85% y 100%"
+  - "Los parámetros de presión y carga afectan la calidad"
   - "La durabilidad QA debe ser mayor al 90%"
   - "La dureza QA debe estar entre 8-12 kg/cm²"
 
 key_metrics:
-  - "Eficiencia de producción (meta: >90%)"
   - "Calidad QA (durabilidad >90%, dureza 8-12 kg/cm²)"
   - "Sackoff total (meta: <5%)"
   - "Rendimiento de materia prima (meta: >95%)"
@@ -167,12 +161,9 @@ key_metrics:
 relationships:
   - "Adiflow → Mejora calidad → Menor sackoff"
   - "Presión acondicionador → Calidad del pellet"
-  - "Carga alimentador → Eficiencia de producción"
   - "Aceite post-engrase → Durabilidad del producto"
 
 analysis_recommendations:
-  - "Análisis de tendencias de eficiencia por mes"
   - "Comparación de calidad con y sin Adiflow"
   - "Correlación entre parámetros de control y calidad"
   - "Análisis de outliers en sackoff"
-  - "Eficiencia por producto y turno" 
