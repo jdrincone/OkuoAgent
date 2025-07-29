@@ -135,7 +135,7 @@ columns:
     description: "Fecha en la cual se actualiza el registro en la bases de datos, es el 
                   momento en el cual el registo u orden de producción fue ingresada al sistema"
     type: "datetime"
-    business_meaning: "Ultima fecha de actualización del registro"
+    business_meaning: "Ultima fecha de actualización del registro esta en formato UTC y debes convertirla a hora colombiana"
 
 calculated_metrics:
   - name: "eficiencia_produccion"
