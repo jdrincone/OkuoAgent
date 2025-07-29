@@ -181,16 +181,27 @@ class DetailedReportService:
                     'descripcion': f"Las órdenes con Adiflow muestran {abs(mejora):.2f} toneladas {'menor' if mejora > 0 else 'mayor'} diferencia"
                 })
         
-        # Correlación entre diferencia de toneladas y sackoff
-        if 'sackoff_por_orden_produccion' in self.df.columns:
+        # Correlación entre diferencia de toneladas y peso de agua
+        if 'peso_agua_kg' in self.df.columns:
             self.df['diferencia_por_orden'] = (self.df['toneladas_a_producir'] - self.df['toneladas_producidas'] - self.df['toneladas_anuladas']).fillna(0)
-            corr = self.df['diferencia_por_orden'].corr(self.df['sackoff_por_orden_produccion'])
+            corr = self.df['diferencia_por_orden'].corr(self.df['peso_agua_kg'])
             if not pd.isna(corr):
                 correlations.append({
-                    'factor': 'Diferencia vs Sackoff',
+                    'factor': 'Diferencia vs Peso Agua',
                     'correlacion': round(corr, 3),
                     'impacto': 'positivo' if corr > 0.3 else 'negativo' if corr < -0.3 else 'bajo',
-                    'descripcion': f"Correlación de {corr:.3f} entre diferencia de toneladas y sackoff"
+                    'descripcion': f"Correlación de {corr:.3f} entre diferencia de toneladas y peso de agua"
+                })
+        
+        # Correlación entre presión del acondicionador y durabilidad
+        if 'control_presion_acondicionador_psi' in self.df.columns and 'durabilidad_pct_qa_agroindustrial' in self.df.columns:
+            corr = self.df['control_presion_acondicionador_psi'].corr(self.df['durabilidad_pct_qa_agroindustrial'])
+            if not pd.isna(corr):
+                correlations.append({
+                    'factor': 'Presión Acondicionador vs Durabilidad',
+                    'correlacion': round(corr, 3),
+                    'impacto': 'positivo' if corr > 0.3 else 'negativo' if corr < -0.3 else 'bajo',
+                    'descripcion': f"Correlación de {corr:.3f} entre presión del acondicionador y durabilidad"
                 })
         
         return correlations
@@ -410,29 +421,22 @@ class DetailedReportService:
         
         recomendaciones = []
         
-        # Recomendaciones basadas en diferencia de toneladas
-        if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo':
-            recomendaciones.append("Implementar controles de calidad más frecuentes para mejorar la consistencia")
-            recomendaciones.append("Revisar y optimizar parámetros de peletización para reducir el sackoff")
-            recomendaciones.append("Desarrollar un plan de acción inmediato para reducir las pérdidas de producción")
-            recomendaciones.append("Establecer métricas de seguimiento diario para identificar causas raíz de la ineficiencia")
+        # Mensaje principal sobre la necesidad de análisis experto
+        recomendaciones.append("🔍 **Análisis Requerido:** Por el momento, no podemos brindar recomendaciones específicas sin la intervención de un experto en procesos de peletización. Los datos actuales muestran patrones complejos que requieren interpretación especializada.")
         
-        # Recomendaciones basadas en calidad
-        if comparisons['durabilidad_promedio']['tendencia'] == 'bajando':
-            recomendaciones.append("Desarrollar protocolos estandarizados para mediciones de calidad")
-            recomendaciones.append("Capacitar al personal en técnicas de control de calidad")
+        recomendaciones.append("📊 **Recopilación de Datos:** Se recomienda ampliar la recopilación de datos operativos para comprender mejor las interacciones entre las diferentes variables del proceso de producción.")
         
-        # Recomendaciones basadas en correlaciones
-        for corr in correlations:
-            if corr['factor'] == 'Uso de Adiflow' and corr['impacto'] == 'positivo':
-                recomendaciones.append("Capacitar al personal en el uso de Adiflow para maximizar su efectividad")
-            elif corr['factor'] == 'Diferencia vs Sackoff' and corr['impacto'] == 'negativo':
-                recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
+        recomendaciones.append("🧪 **Validación de Fenómenos:** Es necesario realizar análisis controlados para validar las correlaciones observadas y entender los mecanismos causales subyacentes en los procesos de peletización.")
         
-        # Recomendaciones generales
-        recomendaciones.append("Establecer métricas de seguimiento diario para identificar tendencias tempranas")
-        recomendaciones.append("Implementar un sistema de alertas automáticas para desviaciones significativas")
-        recomendaciones.append("Desarrollar un plan de mejora continua basado en los datos históricos")
+        # Recomendaciones específicas solo si hay tendencias muy claras
+        if comparisons['diferencia_toneladas']['tendencia'] == 'subiendo' and abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) > 10:
+            recomendaciones.append("⚠️ **Atención Inmediata:** La diferencia de toneladas muestra un incremento significativo que requiere revisión urgente por parte del equipo técnico especializado.")
+        
+        if comparisons['sackoff_total']['tendencia'] == 'subiendo' and comparisons['sackoff_total']['actual'] < -2.0:
+            recomendaciones.append("⚠️ **Control de Calidad:** Los niveles de sackoff están aumentando de manera preocupante, se requiere intervención técnica inmediata para estabilizar el proceso.")
+        
+        # Recomendación final
+        recomendaciones.append("📈 **Seguimiento Continuo:** Mantener un monitoreo constante de las métricas clave mientras se desarrolla un plan de acción basado en análisis técnico especializado.")
         
         return recomendaciones
     
