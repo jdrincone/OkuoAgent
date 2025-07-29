@@ -400,7 +400,7 @@ class DetailedReportService:
             return go.Figure()
         
         # Calcular métricas de calidad promedio por producto
-        quality_metrics = self.df.groupby('nombre_producto').agg({
+        quality_metrics = self.df.groupby('nombre_producto', observed=True).agg({
             'durabilidad_pct_qa_agroindustrial': 'mean',
             'dureza_qa_agroindustrial': 'mean',
             'finos_pct_qa_agroindustrial': 'mean'
@@ -547,7 +547,7 @@ class DetailedReportService:
             df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
             
             # Agrupar por semana y calcular sackoff semanal
-            weekly_sackoff = df_group.groupby('semana').apply(
+            weekly_sackoff = df_group.groupby('semana', observed=True).apply(
                 lambda x: compute_metric_sackoff(x)
             ).reset_index()
             weekly_sackoff.columns = ['semana', 'sackoff']
@@ -669,7 +669,7 @@ class DetailedReportService:
             df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
             
             # Agrupar por semana y calcular toneladas semanales
-            weekly_toneladas = df_group.groupby('semana')['toneladas_producidas'].sum().reset_index()
+            weekly_toneladas = df_group.groupby('semana', observed=True)['toneladas_producidas'].sum().reset_index()
             weekly_toneladas.columns = ['semana', 'toneladas_producidas']
             
             # Convertir periodo a fecha de inicio de semana
@@ -735,7 +735,7 @@ class DetailedReportService:
             
             if not all_weeks.empty:
                 # Agrupar por rango de fechas y sumar toneladas
-                total_weekly = all_weeks.groupby('rango_fechas')['toneladas_producidas'].sum().reset_index()
+                total_weekly = all_weeks.groupby('rango_fechas', observed=True)['toneladas_producidas'].sum().reset_index()
                 promedio_total = total_weekly['toneladas_producidas'].mean()
                 
                 # Agregar línea horizontal del promedio
@@ -801,12 +801,13 @@ class DetailedReportService:
             }
         
         # Análisis por rangos de peso de agua
-        df_valid['rango_agua'] = pd.cut(df_valid['peso_agua_kg'], 
-                                       bins=[0, 300, 500, 700, 1000, float('inf')],
-                                       labels=['0-300kg', '300-500kg', '500-700kg', '700-1000kg', '>1000kg'])
+        df_valid_copy = df_valid.copy()
+        df_valid_copy['rango_agua'] = pd.cut(df_valid_copy['peso_agua_kg'], 
+                                            bins=[0, 300, 500, 700, 1000, float('inf')],
+                                            labels=['0-300kg', '300-500kg', '500-700kg', '700-1000kg', '>1000kg'])
         
         # Calcular estadísticas por rango
-        stats_por_rango = df_valid.groupby('rango_agua').agg({
+        stats_por_rango = df_valid_copy.groupby('rango_agua', observed=True).agg({
             'sackoff_por_orden_produccion': ['mean', 'std', 'count'],
             'peso_agua_kg': 'mean'
         }).round(3)

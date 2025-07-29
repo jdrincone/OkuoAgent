@@ -448,13 +448,13 @@ def render_detailed_report_page():
             st.write(f"**{i}.** {rec}")
 
 def generate_pdf_report(report: Dict) -> bytes:
-    """Genera un PDF del informe con colores corporativos e imágenes de gráficos"""
+    """Genera un PDF profesional del informe con todas las nuevas funcionalidades"""
     from reportlab.lib.pagesizes import letter, A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
     import io
     import tempfile
     import os
@@ -462,9 +462,9 @@ def generate_pdf_report(report: Dict) -> bytes:
     
     # Crear buffer para el PDF
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
     
-    # Definir colores corporativos exactos del prompt
+    # Definir colores corporativos exactos
     corporate_colors = {
         'primary': '#1C8074',      # PANTONE 3295 U
         'secondary': '#666666',    # PANTONE 426 U
@@ -481,42 +481,53 @@ def generate_pdf_report(report: Dict) -> bytes:
     
     # Función para convertir gráfico de Plotly a imagen
     def plotly_to_image(fig, filename):
-        """Convierte un gráfico de Plotly a imagen PNG"""
+        """Convierte un gráfico de Plotly a imagen PNG de alta calidad"""
         try:
-            # Crear directorio temporal si no existe
             temp_dir = "temp_images"
             if not os.path.exists(temp_dir):
                 os.makedirs(temp_dir)
             
-            # Guardar gráfico como imagen
             img_path = os.path.join(temp_dir, filename)
-            fig.write_image(img_path, width=800, height=400, scale=1)
+            fig.write_image(img_path, width=1000, height=500, scale=2)  # Mayor resolución
             return img_path
         except Exception as e:
             print(f"Error guardando gráfico: {e}")
             return None
     
-    # Estilos personalizados con colores corporativos
+    # Estilos personalizados súper profesionales
     styles = getSampleStyleSheet()
     
     # Título principal
     title_style = ParagraphStyle(
         'CorporateTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=28,
         textColor=colors.HexColor(corporate_colors['primary']),
         alignment=TA_CENTER,
-        spaceAfter=30
+        spaceAfter=30,
+        fontName='Helvetica-Bold'
     )
     
-    # Subtítulos
+    # Subtítulos principales
     subtitle_style = ParagraphStyle(
         'CorporateSubtitle',
         parent=styles['Heading2'],
-        fontSize=16,
+        fontSize=18,
         textColor=colors.HexColor(corporate_colors['accent']),
-        spaceAfter=12,
-        spaceBefore=20
+        spaceAfter=15,
+        spaceBefore=25,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Subtítulos secundarios
+    subtitle2_style = ParagraphStyle(
+        'CorporateSubtitle2',
+        parent=styles['Heading3'],
+        fontSize=14,
+        textColor=colors.HexColor(corporate_colors['secondary']),
+        spaceAfter=10,
+        spaceBefore=15,
+        fontName='Helvetica-Bold'
     )
     
     # Texto normal
@@ -525,126 +536,199 @@ def generate_pdf_report(report: Dict) -> bytes:
         parent=styles['Normal'],
         fontSize=11,
         textColor=colors.HexColor(corporate_colors['accent']),
-        spaceAfter=6
+        spaceAfter=8,
+        alignment=TA_JUSTIFY,
+        fontName='Helvetica'
+    )
+    
+    # Texto destacado
+    highlight_style = ParagraphStyle(
+        'CorporateHighlight',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.HexColor(corporate_colors['primary']),
+        spaceAfter=8,
+        fontName='Helvetica-Bold'
     )
     
     # Contenido del PDF
     story = []
     
-    # Título
-    story.append(Paragraph("📊 Informe Detallado de Producción", title_style))
+    # Portada profesional
+    story.append(Paragraph("📊 INFORME DETALLADO DE PRODUCCIÓN", title_style))
+    story.append(Spacer(1, 30))
+    story.append(Paragraph("Análisis Integral de Métricas Operativas", subtitle_style))
+    story.append(Spacer(1, 40))
+    story.append(Paragraph(f"<b>Fecha de Generación:</b> {datetime.now().strftime('%d de %B de %Y a las %H:%M')}", highlight_style))
     story.append(Spacer(1, 20))
+    story.append(Paragraph("Sistema OkuoAgent - Análisis Inteligente de Datos", normal_style))
+    story.append(PageBreak())
     
-    # Fecha de generación
-    story.append(Paragraph(f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", normal_style))
-    story.append(Spacer(1, 20))
-    
-    # Resumen Ejecutivo
-    story.append(Paragraph("📋 Resumen Ejecutivo", subtitle_style))
-    story.append(Paragraph(report['resumen_ejecutivo'], normal_style))
+    # Índice
+    story.append(Paragraph("📋 ÍNDICE DEL INFORME", subtitle_style))
     story.append(Spacer(1, 15))
+    story.append(Paragraph("1. 💡 Insights Ejecutivos", normal_style))
+    story.append(Paragraph("2. 📊 KPIs Principales", normal_style))
+    story.append(Paragraph("3. 📈 Análisis de Producción", normal_style))
+    story.append(Paragraph("4. 🔍 Análisis de Calidad", normal_style))
+    story.append(Paragraph("5. 💧 Análisis de Sackoff vs Dosis de Agua", normal_style))
+    story.append(Paragraph("6. 📅 Comparaciones Temporales", normal_style))
+    story.append(Paragraph("7. 🔗 Análisis de Correlaciones", normal_style))
+    story.append(Paragraph("8. 💡 Recomendaciones", normal_style))
+    story.append(PageBreak())
     
-    # Métricas Clave
-    story.append(Paragraph("📊 KPIs Principales", subtitle_style))
+    # Insights Ejecutivos
+    story.append(Paragraph("💡 INSIGHTS EJECUTIVOS", subtitle_style))
+    story.append(Paragraph(report['resumen_ejecutivo'], normal_style))
+    story.append(Spacer(1, 20))
+    
+    # KPIs Principales con diseño mejorado
+    story.append(Paragraph("📊 KPIs PRINCIPALES", subtitle_style))
     
     metricas = report['metricas_clave']
     kpi_data = [
-        ['Métrica', 'Valor'],
-        ['Diferencia de Toneladas', f"{metricas['diferencia_toneladas']:.1f} ton"],
-        ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%"],
-        ['Durabilidad Promedio', f"{metricas['durabilidad_promedio']:.1f}%"],
-        ['Dureza Promedio', f"{metricas['dureza_promedio']:.1f}%"],
-        ['Finos Promedio', f"{metricas['finos_promedio']:.1f}%"],
-        ['Total Órdenes', str(metricas.get('total_ordenes', 'N/A'))],
-        ['Productos Únicos', str(metricas.get('productos_unicos', 'N/A'))],
-        ['Plantas Activas', str(metricas.get('plantas_activas', 'N/A'))]
+        ['<b>Métrica</b>', '<b>Valor</b>', '<b>Estado</b>'],
+        ['Diferencia de Toneladas', f"{metricas['diferencia_toneladas']:.1f} ton", 
+         '🟢 Excelente' if abs(metricas['diferencia_toneladas']) <= 20 else '🟡 Bueno' if abs(metricas['diferencia_toneladas']) <= 50 else '🔴 Requiere Mejora'],
+        ['Sackoff Total', f"{metricas['sackoff_total']:.2f}%", 
+         '🟢 Óptimo' if metricas['sackoff_total'] >= -0.3 else '🟡 Aceptable' if metricas['sackoff_total'] >= -1.0 else '🔴 Crítico'],
+        ['Durabilidad Promedio', f"{metricas['durabilidad_promedio']:.1f}%", 
+         '🟢 Excelente' if metricas['durabilidad_promedio'] >= 95 else '🟡 Bueno' if metricas['durabilidad_promedio'] >= 90 else '🔴 Requiere Atención'],
+        ['Dureza Promedio', f"{metricas['dureza_promedio']:.1f}%", '📊 En Rango'],
+        ['Finos Promedio', f"{metricas['finos_promedio']:.1f}%", '📊 En Rango'],
+        ['Total Órdenes', str(metricas.get('total_ordenes', 'N/A')), '📊 Procesadas'],
+        ['Toneladas Producidas', f"{metricas.get('toneladas_producidas', 0):.1f} ton", '📊 Volumen']
     ]
     
-    kpi_table = Table(kpi_data, colWidths=[2*inch, 1.5*inch])
+    kpi_table = Table(kpi_data, colWidths=[2.2*inch, 1.2*inch, 1.2*inch])
     kpi_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(corporate_colors['primary'])),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 15),
         ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor(corporate_colors['light'])),
         ('GRID', (0, 0), (-1, -1), 1, colors.HexColor(corporate_colors['gray'])),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor(corporate_colors['light'])])
     ]))
     
     story.append(kpi_table)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 25))
     
-    # Análisis de Producción con gráfico
-    story.append(Paragraph("📈 Análisis de Producción", subtitle_style))
+    # Análisis de Producción
+    story.append(Paragraph("📈 ANÁLISIS DE PRODUCCIÓN", subtitle_style))
     story.append(Paragraph(report['analisis_produccion'], normal_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 15))
     
-    # Incluir gráfico de producción si está disponible
-    if 'graficos' in report and 'produccion' in report['graficos']:
+    # Gráficos de comportamiento semanal
+    if 'graficos' in report and 'sackoff_adiflow' in report['graficos']:
+        story.append(Paragraph("📊 Comportamiento del Sackoff por Semana", subtitle2_style))
         try:
-            fig = report['graficos']['produccion']
-            img_path = plotly_to_image(fig, 'produccion_chart.png')
+            fig = report['graficos']['sackoff_adiflow']
+            img_path = plotly_to_image(fig, 'sackoff_semanal.png')
             if img_path and os.path.exists(img_path):
-                img = Image(img_path, width=6*inch, height=3*inch)
+                img = Image(img_path, width=7*inch, height=3.5*inch)
                 story.append(img)
                 story.append(Spacer(1, 10))
         except Exception as e:
-            print(f"Error incluyendo gráfico de producción: {e}")
+            print(f"Error incluyendo gráfico de sackoff semanal: {e}")
     
-    # Análisis de Calidad con gráfico
-    story.append(Paragraph("🔍 Análisis de Calidad", subtitle_style))
+    if 'graficos' in report and 'toneladas_adiflow' in report['graficos']:
+        story.append(Paragraph("📊 Tendencia de Toneladas por Semana", subtitle2_style))
+        try:
+            fig = report['graficos']['toneladas_adiflow']
+            img_path = plotly_to_image(fig, 'toneladas_semanal.png')
+            if img_path and os.path.exists(img_path):
+                img = Image(img_path, width=7*inch, height=3.5*inch)
+                story.append(img)
+                story.append(Spacer(1, 10))
+        except Exception as e:
+            print(f"Error incluyendo gráfico de toneladas semanal: {e}")
+    
+    story.append(PageBreak())
+    
+    # Análisis de Calidad
+    story.append(Paragraph("🔍 ANÁLISIS DE CALIDAD", subtitle_style))
     story.append(Paragraph(report['analisis_calidad'], normal_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 15))
     
-    # Incluir gráfico de calidad si está disponible
+    # Gráfico de calidad
     if 'graficos' in report and 'calidad' in report['graficos']:
         try:
             fig = report['graficos']['calidad']
             img_path = plotly_to_image(fig, 'calidad_chart.png')
             if img_path and os.path.exists(img_path):
-                img = Image(img_path, width=6*inch, height=3*inch)
+                img = Image(img_path, width=7*inch, height=3.5*inch)
                 story.append(img)
                 story.append(Spacer(1, 10))
         except Exception as e:
             print(f"Error incluyendo gráfico de calidad: {e}")
     
-    # Análisis de Diferencia de Toneladas con gráfico
-    story.append(Paragraph("⚡ Análisis de Diferencia de Toneladas", subtitle_style))
-    story.append(Paragraph(report['analisis_diferencia_toneladas'], normal_style))
-    story.append(Spacer(1, 10))
+    # Análisis de Sackoff vs Dosis de Agua
+    story.append(Paragraph("💧 ANÁLISIS DE SACKOFF VS DOSIS DE AGUA", subtitle_style))
     
-    # Incluir gráfico de diferencia de toneladas si está disponible
-    if 'graficos' in report and 'diferencia_toneladas' in report['graficos']:
+    # Gráfico de sackoff vs agua
+    if 'graficos' in report and 'sackoff_agua' in report['graficos']:
         try:
-            fig = report['graficos']['diferencia_toneladas']
-            img_path = plotly_to_image(fig, 'diferencia_toneladas_chart.png')
+            fig = report['graficos']['sackoff_agua']
+            img_path = plotly_to_image(fig, 'sackoff_agua.png')
             if img_path and os.path.exists(img_path):
-                img = Image(img_path, width=6*inch, height=3*inch)
+                img = Image(img_path, width=7*inch, height=3.5*inch)
                 story.append(img)
                 story.append(Spacer(1, 10))
         except Exception as e:
-            print(f"Error incluyendo gráfico de diferencia de toneladas: {e}")
+            print(f"Error incluyendo gráfico de sackoff vs agua: {e}")
+    
+    # Análisis automático de sackoff vs agua
+    if 'sackoff_agua_analysis' in report and report['sackoff_agua_analysis']['has_analysis']:
+        analysis = report['sackoff_agua_analysis']
+        story.append(Paragraph("📊 Análisis Automático de Relación", subtitle2_style))
+        
+        analysis_text = f"""
+        <b>Hallazgos Clave:</b><br/>
+        • Sackoff promedio con >500kg agua: {analysis['sackoff_alto_agua']:.2f}%<br/>
+        • Sackoff promedio con ≤500kg agua: {analysis['sackoff_bajo_agua']:.2f}%<br/>
+        • Órdenes analizadas con >500kg: {analysis['total_alto_agua']}<br/>
+        • Porcentaje cerca de cero (>500kg): {analysis['porcentaje_cerca_cero']:.1f}%<br/>
+        """
+        
+        if analysis['tiene_tendencia_cerca_cero']:
+            analysis_text += f"<br/><b>🎯 Conclusión:</b> Las órdenes con más de 500kg de agua tienden a tener sackoff cercano a cero, sugiriendo optimización del proceso."
+        else:
+            analysis_text += f"<br/><b>📊 Observación:</b> Se requiere monitoreo continuo para identificar patrones óptimos."
+        
+        story.append(Paragraph(analysis_text, normal_style))
+    
+    story.append(PageBreak())
     
     # Comparaciones Temporales
     if 'comparaciones_temporales' in report and report['comparaciones_temporales']['mes_actual_vs_anterior']:
-        story.append(Paragraph("📅 Comparaciones Temporales", subtitle_style))
+        story.append(Paragraph("📅 COMPARACIONES TEMPORALES", subtitle_style))
         
         comparisons = report['comparaciones_temporales']['mes_actual_vs_anterior']
-        comp_data = [['Métrica', 'Mes Actual', 'Mes Anterior', 'Cambio', 'Tendencia']]
+        comp_data = [['<b>Métrica</b>', '<b>Mes Actual</b>', '<b>Mes Anterior</b>', '<b>Cambio</b>', '<b>Tendencia</b>']]
         
         for metric, data in comparisons.items():
+            metric_name = metric.replace('_', ' ').title()
+            if metric == 'diferencia_toneladas':
+                metric_name = 'Diferencia de Toneladas'
+            elif metric == 'sackoff_total':
+                metric_name = 'Sackoff Total'
+            elif metric == 'durabilidad_promedio':
+                metric_name = 'Durabilidad Promedio'
+            
             comp_data.append([
-                metric.replace('_', ' ').title(),
+                metric_name,
                 f"{data['actual']:.2f}",
                 f"{data['anterior']:.2f}",
                 data['cambio_pct'],
-                data['tendencia']
+                data['tendencia'].title()
             ])
         
-        comp_table = Table(comp_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch, 1*inch])
+        comp_table = Table(comp_data, colWidths=[1.8*inch, 1*inch, 1*inch, 0.8*inch, 1*inch])
         comp_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(corporate_colors['accent'])),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -656,6 +740,7 @@ def generate_pdf_report(report: Dict) -> bytes:
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor(corporate_colors['gray'])),
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor(corporate_colors['light'])])
         ]))
         
         story.append(comp_table)
@@ -663,21 +748,25 @@ def generate_pdf_report(report: Dict) -> bytes:
     
     # Correlaciones
     if 'correlaciones' in report and report['correlaciones']:
-        story.append(Paragraph("🔗 Análisis de Correlaciones", subtitle_style))
+        story.append(Paragraph("🔗 ANÁLISIS DE CORRELACIONES", subtitle_style))
         
         for corr in report['correlaciones']:
-            story.append(Paragraph(f"• {corr['factor']}: {corr['descripcion']}", normal_style))
+            impact_icon = "🟢" if corr['impacto'] == 'positivo' else "🔴" if corr['impacto'] == 'negativo' else "🟡"
+            story.append(Paragraph(f"{impact_icon} <b>{corr['factor']}</b>: {corr['descripcion']}", normal_style))
         
         story.append(Spacer(1, 15))
     
     # Recomendaciones
-    story.append(Paragraph("💡 Recomendaciones", subtitle_style))
+    story.append(Paragraph("💡 RECOMENDACIONES", subtitle_style))
     for i, rec in enumerate(report['recomendaciones'], 1):
-        story.append(Paragraph(f"{i}. {rec}", normal_style))
+        story.append(Paragraph(f"<b>{i}.</b> {rec}", normal_style))
     
-    story.append(Spacer(1, 15))
+    story.append(Spacer(1, 20))
     
-
+    # Pie de página profesional
+    story.append(Paragraph("─" * 50, normal_style))
+    story.append(Paragraph("Sistema OkuoAgent - Análisis Inteligente de Datos de Producción", highlight_style))
+    story.append(Paragraph("Informe generado automáticamente con tecnología de análisis avanzado", normal_style))
     
     # Generar PDF
     doc.build(story)
