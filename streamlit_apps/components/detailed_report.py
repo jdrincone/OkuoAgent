@@ -174,9 +174,35 @@ def render_detailed_report_page():
         with st.expander("📈 Análisis de Producción", expanded=True):
             st.write(report['analisis_produccion'])
             
-            # Mostrar gráfico de producción si está disponible
-            if 'graficos' in report and 'produccion' in report['graficos']:
-                st.plotly_chart(report['graficos']['produccion'], use_container_width=True)
+            # Mostrar gráfico de sackoff por semana con y sin Adiflow si está disponible
+            if 'graficos' in report and 'sackoff_adiflow' in report['graficos']:
+                st.subheader("📊 Comportamiento del Sackoff por Semana: Con vs Sin Adiflow")
+                st.plotly_chart(report['graficos']['sackoff_adiflow'], use_container_width=True)
+                
+                # Agregar explicación de la gráfica
+                st.info("""
+                **Interpretación de la gráfica:**
+                - **Línea verde**: Sackoff semanal cuando se usa Adiflow
+                - **Línea gris**: Sackoff semanal cuando NO se usa Adiflow  
+                - **Línea punteada**: Nivel óptimo de sackoff (3%)
+                - **Eje X**: Rango de fechas de cada semana (dd/mm - dd/mm)
+                - **Objetivo**: Mantener el sackoff semanal por debajo del 3% para optimizar la producción
+                """)
+            
+            # Mostrar gráfico de toneladas por semana con y sin Adiflow si está disponible
+            if 'graficos' in report and 'toneladas_adiflow' in report['graficos']:
+                st.subheader("📈 Tendencia de Toneladas Producidas por Semana: Con vs Sin Adiflow")
+                st.plotly_chart(report['graficos']['toneladas_adiflow'], use_container_width=True)
+                
+                # Agregar explicación de la gráfica
+                st.info("""
+                **Interpretación de la gráfica:**
+                - **Línea verde**: Toneladas semanales cuando se usa Adiflow
+                - **Línea gris**: Toneladas semanales cuando NO se usa Adiflow  
+                - **Línea punteada**: Promedio semanal total como referencia
+                - **Eje X**: Rango de fechas de cada semana (dd/mm - dd/mm)
+                - **Objetivo**: Identificar el impacto del Adiflow en el volumen de producción semanal
+                """)
         
         # Análisis de Calidad
         with st.expander("🔍 Análisis de Calidad", expanded=True):

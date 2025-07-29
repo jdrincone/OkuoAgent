@@ -260,14 +260,15 @@ class DetailedReportService:
         recomendaciones = self._generate_recommendations(month_comparisons, correlations)
         
         # Generar gráficos con colores corporativos
-        production_chart = self._generate_production_chart()
         quality_chart = self._generate_quality_chart()
         efficiency_chart = self._generate_efficiency_chart()
+        sackoff_adiflow_chart = self._generate_sackoff_adiflow_chart()
+        toneladas_adiflow_chart = self._generate_toneladas_adiflow_chart()
         
         # Construir el informe
         report = {
             "resumen_ejecutivo": self._generate_executive_summary(current_month_kpis, month_comparisons),
-            "analisis_produccion": self._generate_production_analysis(current_month_kpis, month_comparisons),
+            "analisis_produccion": self._generate_production_analysis(current_month_kpis, month_comparisons, sackoff_adiflow_chart, toneladas_adiflow_chart),
             "analisis_calidad": self._generate_quality_analysis(current_month_kpis, month_comparisons),
             "analisis_diferencia_toneladas": self._generate_efficiency_analysis(current_month_kpis, month_comparisons),
             "recomendaciones": recomendaciones,
@@ -289,9 +290,10 @@ class DetailedReportService:
             },
             "alertas": alertas,
             "graficos": {
-                "produccion": production_chart,
                 "calidad": quality_chart,
-                "diferencia_toneladas": efficiency_chart
+                "diferencia_toneladas": efficiency_chart,
+                "sackoff_adiflow": sackoff_adiflow_chart,
+                "toneladas_adiflow": toneladas_adiflow_chart
             }
         }
         
@@ -323,7 +325,7 @@ class DetailedReportService:
         y la implementación de controles de calidad más rigurosos para optimizar los procesos operativos.
         """
     
-    def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
+    def _generate_production_analysis(self, current_kpis: Dict, comparisons: Dict, sackoff_adiflow_chart: go.Figure, toneladas_adiflow_chart: go.Figure) -> str:
         """Genera el análisis de producción"""
         
         return f"""
@@ -338,6 +340,18 @@ class DetailedReportService:
         • La diferencia de toneladas está {comparisons['diferencia_toneladas']['tendencia']} ({comparisons['diferencia_toneladas']['cambio_pct']})
         • El sackoff está {comparisons['sackoff_total']['tendencia']} ({comparisons['sackoff_total']['cambio_pct']})
         • La producción muestra {'estabilidad' if abs(float(comparisons['diferencia_toneladas']['cambio_pct'].replace('%', '').replace('+', ''))) < 5 else 'variaciones significativas'} en términos de volumen
+        
+        ANÁLISIS DEL SACKOFF POR SEMANA:
+        • Se analiza el comportamiento del sackoff comparando semanas con y sin uso de Adiflow
+        • La gráfica muestra la evolución semanal del sackoff para identificar patrones y tendencias
+        • Se incluye una línea de referencia del 3% como nivel óptimo de sackoff
+        • Este análisis permite identificar la efectividad del uso de Adiflow en la reducción de pérdidas semanales
+        
+        ANÁLISIS DE TONELADAS POR SEMANA:
+        • Se analiza la tendencia de toneladas producidas comparando semanas con y sin uso de Adiflow
+        • La gráfica muestra la evolución semanal de la producción para identificar patrones de rendimiento
+        • Se incluye una línea de promedio semanal total como referencia de rendimiento
+        • Este análisis permite identificar el impacto del uso de Adiflow en el volumen de producción semanal
         """
     
     def _generate_quality_analysis(self, current_kpis: Dict, comparisons: Dict) -> str:
@@ -402,58 +416,6 @@ class DetailedReportService:
         recomendaciones.append("Desarrollar un plan de mejora continua basado en los datos históricos")
         
         return recomendaciones
-    
-    def _generate_production_chart(self) -> go.Figure:
-        """Genera gráfico de tendencia de producción con colores corporativos"""
-        if self.df.empty:
-            return go.Figure()
-        
-        # Agrupar por fecha y calcular producción diaria
-        daily_production = self.df.groupby('fecha_produccion')['toneladas_producidas'].sum().reset_index()
-        
-        fig = go.Figure()
-        
-        fig.add_trace(go.Scatter(
-            x=daily_production['fecha_produccion'],
-            y=daily_production['toneladas_producidas'],
-            mode='lines+markers',
-            name='Producción Diaria',
-            line=dict(
-                color='#1C8074',  # PANTONE 3295 U
-                width=3
-            ),
-            marker=dict(
-                color='#1C8074',
-                size=6
-            ),
-            fill='tonexty',
-            fillcolor='rgba(230, 236, 216, 0.5)'  # PANTONE 152-2 U con transparencia
-        ))
-        
-        fig.update_layout(
-            title={
-                'text': 'Tendencia de Producción Diaria',
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
-            },
-            xaxis_title='Fecha de Producción',
-            yaxis_title='Toneladas Producidas',
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#1A494C'),  # PANTONE 175-16 U
-            xaxis=dict(
-                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
-                linecolor='#C9C9C9'
-            ),
-            yaxis=dict(
-                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
-                linecolor='#C9C9C9'
-            ),
-            height=400
-        )
-        
-        return fig
     
     def _generate_quality_chart(self) -> go.Figure:
         """Genera gráfico de métricas de calidad con colores corporativos"""
@@ -585,6 +547,269 @@ class DetailedReportService:
                 linecolor='#C9C9C9'
             ),
             height=400
+        )
+        
+        return fig 
+
+    def _generate_sackoff_adiflow_chart(self) -> go.Figure:
+        """Genera gráfico de sackoff por semana con y sin Adiflow con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        # Calcular sackoff semanal para cada grupo
+        def calculate_weekly_sackoff(df_group):
+            if df_group.empty:
+                return pd.DataFrame()
+            
+            # Crear columna de semana
+            df_group = df_group.copy()
+            df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
+            
+            # Agrupar por semana y calcular sackoff semanal
+            weekly_sackoff = df_group.groupby('semana').apply(
+                lambda x: compute_metric_sackoff(x)
+            ).reset_index()
+            weekly_sackoff.columns = ['semana', 'sackoff']
+            
+            # Convertir periodo a fecha de inicio de semana
+            weekly_sackoff['fecha_inicio_semana'] = weekly_sackoff['semana'].dt.start_time
+            weekly_sackoff['fecha_fin_semana'] = weekly_sackoff['semana'].dt.end_time
+            
+            # Crear etiqueta con rango de fechas
+            weekly_sackoff['rango_fechas'] = weekly_sackoff.apply(
+                lambda row: f"{row['fecha_inicio_semana'].strftime('%d/%m')} - {row['fecha_fin_semana'].strftime('%d/%m')}", 
+                axis=1
+            )
+            
+            return weekly_sackoff
+        
+        weekly_con_adiflow = calculate_weekly_sackoff(df_con_adiflow)
+        weekly_sin_adiflow = calculate_weekly_sackoff(df_sin_adiflow)
+        
+        fig = go.Figure()
+        
+        # Línea para Con Adiflow
+        if not weekly_con_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_con_adiflow['rango_fechas'],
+                y=weekly_con_adiflow['sackoff'],
+                mode='lines+markers',
+                name='Con Adiflow',
+                line=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#1C8074',
+                    size=8
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Semana: %{x}<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea para Sin Adiflow
+        if not weekly_sin_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_sin_adiflow['rango_fechas'],
+                y=weekly_sin_adiflow['sackoff'],
+                mode='lines+markers',
+                name='Sin Adiflow',
+                line=dict(
+                    color='#666666',  # PANTONE 426 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#666666',
+                    size=8
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Semana: %{x}<br>Sackoff: %{y:.2f}%<extra></extra>'
+            ))
+        
+        # Línea de referencia para sackoff óptimo (3%)
+        if not weekly_con_adiflow.empty or not weekly_sin_adiflow.empty:
+            fig.add_hline(
+                y=3.0,
+                line_dash="dash",
+                line_color="#1A494C",  # PANTONE 175-16 U
+                annotation_text="Sackoff Óptimo (3%)",
+                annotation_position="top right",
+                line_width=2
+            )
+        
+        fig.update_layout(
+            title={
+                'text': 'Comportamiento del Sackoff por Semana: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Rango de Fechas (Semana)',
+            yaxis_title='Sackoff (%)',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickangle=-45  # Rotar etiquetas para mejor legibilidad
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                range=[0, max(
+                    weekly_con_adiflow['sackoff'].max() if not weekly_con_adiflow.empty else 0,
+                    weekly_sin_adiflow['sackoff'].max() if not weekly_sin_adiflow.empty else 0,
+                    5  # Mínimo 5% para mostrar la línea de referencia
+                ) * 1.1]
+            ),
+            height=450,  # Aumentar altura para acomodar etiquetas rotadas
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        return fig 
+
+    def _generate_toneladas_adiflow_chart(self) -> go.Figure:
+        """Genera gráfico de toneladas producidas por semana con y sin Adiflow con colores corporativos"""
+        if self.df.empty:
+            return go.Figure()
+        
+        # Filtrar datos con y sin Adiflow
+        df_con_adiflow = filter_con_adiflow(self.df)
+        df_sin_adiflow = filter_sin_adiflow(self.df)
+        
+        # Calcular toneladas semanales para cada grupo
+        def calculate_weekly_toneladas(df_group):
+            if df_group.empty:
+                return pd.DataFrame()
+            
+            # Crear columna de semana
+            df_group = df_group.copy()
+            df_group['semana'] = df_group['fecha_produccion'].dt.to_period('W')
+            
+            # Agrupar por semana y calcular toneladas semanales
+            weekly_toneladas = df_group.groupby('semana')['toneladas_producidas'].sum().reset_index()
+            weekly_toneladas.columns = ['semana', 'toneladas_producidas']
+            
+            # Convertir periodo a fecha de inicio de semana
+            weekly_toneladas['fecha_inicio_semana'] = weekly_toneladas['semana'].dt.start_time
+            weekly_toneladas['fecha_fin_semana'] = weekly_toneladas['semana'].dt.end_time
+            
+            # Crear etiqueta con rango de fechas
+            weekly_toneladas['rango_fechas'] = weekly_toneladas.apply(
+                lambda row: f"{row['fecha_inicio_semana'].strftime('%d/%m')} - {row['fecha_fin_semana'].strftime('%d/%m')}", 
+                axis=1
+            )
+            
+            return weekly_toneladas
+        
+        weekly_con_adiflow = calculate_weekly_toneladas(df_con_adiflow)
+        weekly_sin_adiflow = calculate_weekly_toneladas(df_sin_adiflow)
+        
+        fig = go.Figure()
+        
+        # Línea para Con Adiflow
+        if not weekly_con_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_con_adiflow['rango_fechas'],
+                y=weekly_con_adiflow['toneladas_producidas'],
+                mode='lines+markers',
+                name='Con Adiflow',
+                line=dict(
+                    color='#1C8074',  # PANTONE 3295 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#1C8074',
+                    size=8
+                ),
+                hovertemplate='<b>Con Adiflow</b><br>Semana: %{x}<br>Toneladas: %{y:,.0f} ton<extra></extra>'
+            ))
+        
+        # Línea para Sin Adiflow
+        if not weekly_sin_adiflow.empty:
+            fig.add_trace(go.Scatter(
+                x=weekly_sin_adiflow['rango_fechas'],
+                y=weekly_sin_adiflow['toneladas_producidas'],
+                mode='lines+markers',
+                name='Sin Adiflow',
+                line=dict(
+                    color='#666666',  # PANTONE 426 U
+                    width=3
+                ),
+                marker=dict(
+                    color='#666666',
+                    size=8
+                ),
+                hovertemplate='<b>Sin Adiflow</b><br>Semana: %{x}<br>Toneladas: %{y:,.0f} ton<extra></extra>'
+            ))
+        
+        # Línea de promedio semanal total (opcional)
+        if not weekly_con_adiflow.empty or not weekly_sin_adiflow.empty:
+            # Combinar todas las semanas para calcular promedio
+            all_weeks = pd.concat([
+                weekly_con_adiflow[['rango_fechas', 'toneladas_producidas']] if not weekly_con_adiflow.empty else pd.DataFrame(),
+                weekly_sin_adiflow[['rango_fechas', 'toneladas_producidas']] if not weekly_sin_adiflow.empty else pd.DataFrame()
+            ])
+            
+            if not all_weeks.empty:
+                # Agrupar por rango de fechas y sumar toneladas
+                total_weekly = all_weeks.groupby('rango_fechas')['toneladas_producidas'].sum().reset_index()
+                promedio_total = total_weekly['toneladas_producidas'].mean()
+                
+                # Agregar línea horizontal del promedio
+                fig.add_hline(
+                    y=promedio_total,
+                    line_dash="dot",
+                    line_color="#94AF92",  # PANTONE 7494 U
+                    annotation_text=f"Promedio Semanal: {promedio_total:,.0f} ton",
+                    annotation_position="top right",
+                    line_width=2
+                )
+        
+        fig.update_layout(
+            title={
+                'text': 'Tendencia de Toneladas Producidas por Semana: Con vs Sin Adiflow',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#1A494C'}  # PANTONE 175-16 U
+            },
+            xaxis_title='Rango de Fechas (Semana)',
+            yaxis_title='Toneladas Producidas',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(color='#1A494C'),  # PANTONE 175-16 U
+            xaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickangle=-45  # Rotar etiquetas para mejor legibilidad
+            ),
+            yaxis=dict(
+                gridcolor='#C9C9C9',  # PANTONE COLOR GRAY 2 U
+                linecolor='#C9C9C9',
+                tickformat=',',  # Formato con comas para miles
+                range=[0, max(
+                    weekly_con_adiflow['toneladas_producidas'].max() if not weekly_con_adiflow.empty else 0,
+                    weekly_sin_adiflow['toneladas_producidas'].max() if not weekly_sin_adiflow.empty else 0,
+                    1000  # Mínimo 1000 ton para mostrar la gráfica
+                ) * 1.1]
+            ),
+            height=450,  # Aumentar altura para acomodar etiquetas rotadas
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
         
         return fig 
