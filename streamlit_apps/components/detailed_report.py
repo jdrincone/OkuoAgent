@@ -577,7 +577,7 @@ def generate_pdf_report(report: Dict) -> bytes:
     # Índice
     story.append(Paragraph("📋 ÍNDICE DEL INFORME", subtitle_style))
     story.append(Spacer(1, 15))
-    story.append(Paragraph("1. 💡 Insights Ejecutivos", normal_style))
+    story.append(Paragraph("1. 💡 Insights", normal_style))
     story.append(Paragraph("2. 📊 KPIs Principales", normal_style))
     story.append(Paragraph("3. 📈 Análisis de Producción", normal_style))
     story.append(Paragraph("4. 🔍 Análisis de Calidad", normal_style))
@@ -587,8 +587,8 @@ def generate_pdf_report(report: Dict) -> bytes:
     story.append(Paragraph("8. 💡 Recomendaciones", normal_style))
     story.append(PageBreak())
     
-    # Insights Ejecutivos
-    story.append(Paragraph("💡 INSIGHTS EJECUTIVOS", subtitle_style))
+    # Insights 
+    story.append(Paragraph("💡 INSIGHTS", subtitle_style))
     story.append(Paragraph(report['resumen_ejecutivo'], normal_style))
     story.append(Spacer(1, 20))
     
