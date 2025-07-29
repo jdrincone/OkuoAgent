@@ -46,42 +46,37 @@ class DetailedReportService:
     def _get_period_data(self) -> Dict:
         """Obtiene datos para diferentes períodos temporales"""
         
-        # Fechas de referencia
-        today = datetime.now()
-        start_of_month = today.replace(day=1)
-        start_of_previous_month = (start_of_month - timedelta(days=1)).replace(day=1)
-        start_of_week = today - timedelta(days=today.weekday())
-        
-        # Mes actual
-        current_month = self.df[
-            (self.df['fecha_produccion'] >= start_of_month) & 
-            (self.df['fecha_produccion'] <= today)
-        ]
+        # Usar exactamente el mismo método que kpi_service.py
+        now = datetime.now()
+        current_month = now.month
+        current_year = now.year
         
         # Mes anterior
-        previous_month = self.df[
-            (self.df['fecha_produccion'] >= start_of_previous_month) & 
-            (self.df['fecha_produccion'] < start_of_month)
+        if current_month == 1:
+            prev_month = 12
+            prev_year = current_year - 1
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+        
+        # Mes actual - usar exactamente el mismo filtro que kpi_service
+        current_month_data = self.df[
+            (self.df['fecha_produccion'].dt.month == current_month) & 
+            (self.df['fecha_produccion'].dt.year == current_year)
         ]
         
-        # Semana actual
-        current_week = self.df[
-            (self.df['fecha_produccion'] >= start_of_week) & 
-            (self.df['fecha_produccion'] <= today)
+        # Mes anterior - usar exactamente el mismo filtro que kpi_service
+        previous_month_data = self.df[
+            (self.df['fecha_produccion'].dt.month == prev_month) & 
+            (self.df['fecha_produccion'].dt.year == prev_year)
         ]
         
-        # Semana anterior
-        start_of_previous_week = start_of_week - timedelta(days=7)
-        previous_week = self.df[
-            (self.df['fecha_produccion'] >= start_of_previous_week) & 
-            (self.df['fecha_produccion'] < start_of_week)
-        ]
-        
+        # Para compatibilidad, mantener los nombres originales
         return {
-            'current_month': current_month,
-            'previous_month': previous_month,
-            'current_week': current_week,
-            'previous_week': previous_week
+            'current_month': current_month_data,
+            'previous_month': previous_month_data,
+            'current_week': current_month_data,  # Usar mes actual como semana para compatibilidad
+            'previous_week': previous_month_data  # Usar mes anterior como semana para compatibilidad
         }
     
     def _calculate_period_kpis(self, df: pd.DataFrame) -> Dict:
@@ -99,15 +94,17 @@ class DetailedReportService:
             }
         
         # Calcular diferencia de toneladas
+        cond = df["order_produccion_despachada"] == 'Si'
+        df = df[cond].copy()
         diferencia_toneladas = compute_metric_diferencia_toneladas(df)
         
         # Calcular sackoff
         sackoff = compute_metric_sackoff(df)
         
-        # Calcular métricas de calidad
-        durabilidad = df['durabilidad_pct_qa_agroindustrial'].mean()
-        dureza = df['dureza_qa_agroindustrial'].mean()
-        finos = df['finos_pct_qa_agroindustrial'].mean()
+        # Calcular métricas de calidad usando funciones centralizadas
+        durabilidad = compute_metric_pdi_mean_agroindustrial(df)
+        dureza = compute_metric_dureza_mean_agroindustrial(df)
+        finos = compute_metric_fino_mean_agroindustrial(df)
         
         return {
             'diferencia_toneladas': diferencia_toneladas,
