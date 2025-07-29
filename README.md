@@ -1,342 +1,226 @@
-# 🤖 OkuoAgent - Agente Inteligente de Análisis de Datos en plantas de producción de alimentos concentrados para animales
+# OkuoAgent - Análisis Inteligente de Datos de Producción
 
 ## 📋 Descripción General
 
-**OkuoAgent** es un agente de inteligencia artificial especializado en análisis de datos industriales. Combina tecnologías avanzadas de IA (LangGraph, OpenAI) con capacidades de análisis de datos en tiempo real para proporcionar insights accionables sobre producción y calidad.
+OkuoAgent es una aplicación web inteligente que utiliza **LangGraph** y **Streamlit** para proporcionar análisis avanzado de datos de producción de alimentos para animales. La aplicación incluye un agente conversacional especializado que puede generar visualizaciones, calcular KPIs y crear informes detallados con colores corporativos.
 
-### 🎯 Propósito Principal
+### 🆕 **Nueva Funcionalidad: Informe Detallado (v1.3.0)**
 
-- **Análisis Inteligente**: Conversación natural con datos de producción
-- **Visualización Automática**: Gráficos interactivos generados automáticamente
-- **KPIs en Tiempo Real**: Métricas clave de producción actualizadas
-- **Detección de Tendencias**: Identificación automática de patrones y anomalías
+La versión 1.3.0 introduce un **sistema completo de informes detallados** con las siguientes características:
+
+#### 📊 **Informe Detallado de Producción**
+- **Análisis temporal avanzado** (mes actual vs anterior, semana actual)
+- **Gráficos con colores corporativos** PANTONE
+- **PDF profesional** con imágenes integradas
+- **Análisis de correlaciones** entre métricas
+- **Recomendaciones estratégicas** basadas en datos
+
+#### 🎨 **Identidad Visual Corporativa**
+- **Paleta de colores PANTONE** implementada en toda la aplicación
+- **Gráficos consistentes** con la marca
+- **PDF con diseño profesional** y colores corporativos
+
+#### 📄 **Generación de PDF**
+- **Imágenes de gráficos** integradas automáticamente
+- **Alta resolución** (800×400 píxeles)
+- **Layout optimizado** para lectura profesional
+- **Gestión automática** de archivos temporales
 
 ## 🏗️ Arquitectura del Sistema
 
-### Componentes Principales
+### **Componentes Principales:**
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │    │   LangGraph     │    │   Base de Datos │
-│   (Frontend)    │◄──►│   (Backend)     │◄──►│   (PostgreSQL)  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │              ┌─────────────────┐              │
-         └──────────────►│   OpenAI API    │◄─────────────┘
-                        └─────────────────┘
-```
+1. **Frontend (Streamlit)**
+   - Interfaz web responsiva
+   - Dashboard inteligente con chat
+   - **Nueva pestaña de informe detallado**
+   - Sistema de autenticación
 
-### Flujo de Datos
+2. **Backend (LangGraph)**
+   - Agente conversacional especializado
+   - **Nuevo agente para informes detallados**
+   - Procesamiento de datos en tiempo real
+   - Generación de visualizaciones
 
-1. **Usuario** → Interactúa con la interfaz Streamlit
-2. **Streamlit** → Envía consulta al agente LangGraph
-3. **LangGraph** → Procesa con OpenAI y ejecuta código Python
-4. **Base de Datos** → Proporciona datos de producción en tiempo real
-5. **Resultados** → Gráficos y análisis se muestran en la UI
+3. **Servicios de Datos**
+   - Conexión a base de datos PostgreSQL
+   - **Servicio de informes detallados** (`DetailedReportService`)
+   - Cálculo de KPIs y métricas
+   - Filtros de datos (Adiflow)
+
+4. **Sistema de Reportes**
+   - **Generación automática** de informes
+   - **PDF con imágenes** y colores corporativos
+   - **Análisis temporal** y comparativo
+   - **Recomendaciones** basadas en datos
 
 ## 🚀 Instalación y Configuración
 
-### Prerrequisitos
-
-- Python 3.12+
+### **Requisitos del Sistema:**
+- Python 3.8+
 - PostgreSQL
-- Cuenta de OpenAI API
+- **Kaleido** (para generación de imágenes en PDF)
 
-### 1. Clonar el Repositorio
-
+### **Instalación:**
 ```bash
-git clone https://github.com/tu-usuario/OkuoAgent.git
+# Clonar el repositorio
+git clone https://github.com/jdrincone/OkuoAgent.git
 cd OkuoAgent
-```
 
-### 2. Instalar Dependencias
-
-```bash
+# Instalar dependencias
 pip install -r requirements.txt
-```
 
-### 3. Configurar Variables de Entorno
-
-Copiar el archivo de ejemplo y configurar:
-
-```bash
+# Configurar variables de entorno
 cp env.example .env
-```
+# Editar .env con tus credenciales
 
-Editar `.env` con tus credenciales:
-
-```env
-# OpenAI Configuration
-OPENAI_API_KEY=tu-api-key-aqui
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_TEMPERATURE=0.
-
-# Database Configuration
-DATABASE_HOST=''
-DATABASE_PORT=''
-DATABASE_NAME='
-DATABASE_USER=''
-DATABASE_PASSWORD=''
-DATABASE_URL=''
-
-# Application Configuration
-STREAMLIT_PAGE_TITLE=OkuoAgent - Análisis Inteligente
-STREAMLIT_PAGE_ICON=🤖
-IMAGES_DIR=images/plotly_figures/pickle
-UPLOADS_DIR=uploads
-
-# Session Management
-SESSION_TTL_HOURS=24
-MAX_MEMORY_PER_SESSION_MB=100
-MAX_VARIABLES_PER_SESSION=50
-MAX_IMAGES_PER_SESSION=20
-CLEANUP_INTERVAL_SECONDS=691200
-```
-
-### 4. Configurar Base de Datos
-
-Asegúrate de que PostgreSQL esté corriendo y que la tabla `xxxx` exista con la estructura correcta.
-
-### 5. Ejecutar la Aplicación
-
-```bash
+# Ejecutar la aplicación
 streamlit run run_app.py
 ```
 
-La aplicación estará disponible en: `http://localhost:8502`
+## 📖 Cómo Usar OkuoAgent
 
-## 💬 Cómo Usar OkuoAgent
+### **Dashboard Inteligente:**
+1. Accede a la pestaña "💬 Dashboard Inteligente"
+2. Haz preguntas en lenguaje natural sobre los datos
+3. El agente generará visualizaciones y análisis automáticamente
 
-### 1. Acceso a la Interfaz
+### **📊 Informe Detallado (NUEVO):**
+1. Accede a la pestaña "📊 Informe Detallado"
+2. **Haz clic en "📄 Descargar Informe PDF"** al inicio de la página
+3. El sistema generará automáticamente:
+   - **Análisis temporal** (mes actual vs anterior)
+   - **Gráficos con colores corporativos**
+   - **PDF profesional** con imágenes integradas
+   - **Recomendaciones estratégicas**
 
-1. Abre tu navegador y ve a `http://localhost:8502`
-2. Verás la interfaz principal con dos pestañas:
-   - **💬 Dashboard Inteligente**: Chat con el agente
-   - **🔧 Depuración**: Información técnica y debugging
-
-### 2. Interacción con el Chat
-
-#### Consultas Básicas
-```
-"Muéstrame las tendencias de producción del último mes"
-"¿Cuál es el sackoff promedio en la planta?"
-"Compara la calidad con y sin Adiflow"
-```
-
-#### Análisis Específicos
-```
-"Genera un gráfico de eficiencia por producto"
-"Analiza las anomalías en dureza"
-"Calcula los KPIs principales"
-```
-
-#### Consultas Avanzadas
-```
-"Identifica correlaciones entre presión y calidad"
-"Predice tendencias de producción para el próximo trimestre"
-"Detecta patrones estacionales en los datos"
-```
-
-### 3. Interpretación de Resultados
-
-#### Gráficos Interactivos
-- **Zoom**: Haz clic y arrastra para hacer zoom
-- **Hover**: Pasa el mouse para ver detalles
-- **Pan**: Arrastra para mover la vista
-- **Reset**: Doble clic para resetear la vista
-
-#### KPIs en Tiempo Real
-- **Sackoff**: Pérdida total por orden de producción
-- **Eficiencia**: Porcentaje de producción vs. planificado
-- **Calidad QA**: Métricas oficiales de calidad
-- **Rendimiento**: Eficiencia en uso de materia prima
+### **Características del Informe:**
+- ✅ **Resumen ejecutivo** con KPIs principales
+- ✅ **Análisis de producción** con gráfico de tendencias
+- ✅ **Análisis de calidad** con métricas por producto
+- ✅ **Análisis de eficiencia** con correlaciones
+- ✅ **Comparaciones temporales** detalladas
+- ✅ **Recomendaciones** accionables
 
 ## 📊 Datos y Métricas Disponibles
 
-### Tabla Principal: `xxxx`
+### **KPIs Principales:**
+- **Eficiencia de Producción** (%)
+- **Sackoff Total** (%)
+- **Durabilidad Promedio** (%)
+- **Dureza Promedio** (%)
+- **Finos Promedio** (%)
 
-#### Columnas Clave
-- **`fecha_produccion`**: Fecha exacta de producción
-- **`planta`**: Ubicación de la producción
-- **`nombre_producto`**: Producto fabricado
-- **`toneladas_producidas`**: Producción real
-- **`toneladas_a_producir`**: Producción planificada
-- **`tiene_adiflow`**: Uso de aditivo (Si/No)
-- **`durabilidad_pct_qa_agroindustrial`**: Calidad oficial
-- **`dureza_qa_agroindustrial`**: Resistencia física
-- **`finos_pct_qa_agroindustrial`**: Granulometría
+### **Análisis Temporal:**
+- **Mes actual vs anterior** con cambios porcentuales
+- **Semana actual** con tendencias
+- **Análisis de correlaciones** entre métricas
 
-#### Métricas Calculadas
-- **Eficiencia de Producción**: `(toneladas_producidas / toneladas_a_producir) * 100`
-- **Sackoff Total**: Pérdida total incluyendo anulaciones
+### **Filtros Disponibles:**
+- **Por planta** de producción
+- **Por producto** específico
+- **Con/sin Adiflow**
+- **Por rango de fechas**
 
-### Funciones Especializadas
+## 🎨 Características Técnicas
 
-#### Filtros por Adiflow
-```python
-# Datos con Adiflow
-filter_con_adiflow(produccion_aliar)
+### **Colores Corporativos Implementados:**
+- **Verde Principal:** `#1C8074` (PANTONE 3295 U)
+- **Verde Oscuro:** `#1A494C` (PANTONE 175-16 U)
+- **Verde Grisáceo:** `#94AF92` (PANTONE 7494 U)
+- **Verde Claro:** `#E6ECD8` (PANTONE 152-2 U)
+- **Gris:** `#C9C9C9` (PANTONE COLOR GRAY 2 U)
 
-# Datos sin Adiflow  
-filter_sin_adiflow(produccion_aliar)
-```
-
-#### Cálculo de Métricas
-```python
-# Sackoff por orden
-compute_metric_sackoff(produccion_aliar)
-
-# KPIs principales
-calculate_kpis(produccion_aliar)
-```
-
-## 🔧 Características Técnicas
-
-### Gestión de Sesiones
-- **TTL**: Sesiones expiran automáticamente (24h por defecto)
-- **Memoria**: Límite de 100MB por sesión
-- **Limpieza**: Limpieza automática cada 8 días
-- **Variables**: Máximo 50 variables por sesión
-
-### Manejo de Errores
-- **Validación**: Verificación automática de datos
-- **Fallbacks**: Respuestas de error útiles
-- **Logging**: Registro detallado de operaciones
-- **Recuperación**: Recuperación automática de errores
-
-### Optimizaciones
-- **Caché**: Metadata cacheada para mejor rendimiento
-- **Lazy Loading**: Carga de datos bajo demanda
-- **Memory Management**: Gestión automática de memoria
-- **File Cleanup**: Limpieza automática de archivos temporales
+### **Tecnologías Utilizadas:**
+- **Streamlit** - Interfaz web
+- **LangGraph** - Agente conversacional
+- **Plotly** - Visualizaciones interactivas
+- **Pandas/NumPy** - Procesamiento de datos
+- **ReportLab** - Generación de PDF
+- **Kaleido** - Conversión de gráficos a imágenes
+- **PostgreSQL** - Base de datos
 
 ## 📁 Estructura del Repositorio
 
 ```
 OkuoAgent/
 ├── core/                          # Lógica principal del agente
-│   ├── backend.py                 # Backend principal
-│   ├── graph/                     # Componentes de LangGraph
-│   │   ├── nodes.py              # Nodos del grafo
-│   │   ├── state.py              # Estado del agente
-│   │   └── tools.py              # Herramientas de ejecución
-│   └── prompts/                   # Prompts del agente
-│       └── main_prompt.md        # Prompt principal
-├── streamlit_apps/                # Aplicación Streamlit
-│   ├── components/               # Componentes modulares
-│   │   ├── chat.py              # Interfaz de chat
-│   │   ├── data_loader.py       # Cargador de datos
-│   │   ├── kpi_view.py          # Vista de KPIs
-│   │   ├── debug_view.py        # Vista de debugging
-│   │   └── styles.py            # Estilos y tema
-│   ├── pages/                    # Páginas de la aplicación
-│   │   ├── login.py             # Sistema de autenticación
-│   │   └── python_visualisation_agent.py
-│   └── data_analysis_streamlit_app.py
-├── services/                      # Servicios de datos
-│   ├── database_service.py       # Conexión a BD
-│   ├── metadata_service.py       # Gestión de metadata
-│   └── kpi_service.py           # Servicio de KPIs
-├── utils/                         # Utilidades
-│   ├── logger.py                 # Sistema de logging
-│   ├── config_validator.py       # Validación de configuración
-│   ├── production_metrics.py     # Métricas de producción
-│   ├── session_utils.py          # Gestión de sesiones
-│   └── kpi_components.py         # Componentes de KPIs
-├── data/                          # Datos y metadata
-│   └── metadata/                 # Archivos YAML de metadata
-│       └── produccion_aliar.yaml
-├── docs/                          # Documentación
-│   ├── DEVELOPER_GUIDE.md        # Guía para desarrolladores
-│   ├── USER_GUIDE.md             # Guía para usuarios
-│   └── TECHNICAL_SPECS.md        # Especificaciones técnicas
-├── images/                        # Imágenes generadas
-├── logs/                          # Archivos de log
-├── uploads/                       # Archivos temporales
-├── tests/                         # Tests del sistema
-├── config.py                      # Configuración centralizada
-├── requirements.txt               # Dependencias
-├── run_app.py                     # Punto de entrada
-├── env.example                    # Ejemplo de variables de entorno
-├── .gitignore                     # Archivos ignorados por Git
-├── .streamlitignore               # Archivos ignorados por Streamlit
-└── README.md                      # Esta documentación
+│   ├── prompts/
+│   │   ├── main_prompt.md        # Prompt principal del agente
+│   │   └── detailed_report_prompt.md  # Prompt para informes detallados
+│   └── graph/                    # Nodos de LangGraph
+├── services/                     # Servicios de negocio
+│   ├── database_service.py      # Conexión a base de datos
+│   ├── kpi_service.py          # Cálculo de KPIs
+│   └── detailed_report_service.py  # Servicio de informes detallados
+├── streamlit_apps/              # Aplicaciones Streamlit
+│   ├── components/              # Componentes reutilizables
+│   │   ├── chat.py             # Componente de chat
+│   │   ├── data_loader.py      # Cargador de datos
+│   │   ├── kpi_view.py         # Vista de KPIs
+│   │   ├── debug_view.py       # Vista de depuración
+│   │   └── detailed_report.py  # Componente de informe detallado
+│   └── pages/                  # Páginas de la aplicación
+│       ├── login.py            # Página de login
+│       └── detailed_report.py  # Página de informe detallado
+├── utils/                       # Utilidades
+│   ├── production_metrics.py   # Métricas de producción
+│   └── logger.py               # Sistema de logging
+├── config.py                   # Configuración centralizada
+├── requirements.txt            # Dependencias
+└── run_app.py                 # Punto de entrada
 ```
 
-## 🛠️ Desarrollo y Mantenimiento
+## 🔄 Desarrollo y Mantenimiento
 
-### Comandos Útiles
+### **Versiones Disponibles:**
+- **v1.1.0** - Versión inicial con dashboard básico
+- **v1.2.0** - Estabilización y documentación
+- **v1.3.0** - **Informe detallado con colores corporativos e imágenes en PDF**
 
-#### Verificar Estado
-```bash
-# Verificar configuración
-python -c "from config import config; print('Config OK')"
+### **Ramas Activas:**
+- `main` - Rama principal estable
+- `feature/gerencial-reports` - **Nueva funcionalidad de informes detallados**
 
-# Verificar conexión a BD
-python -c "from services.database_service import DatabaseService; print('DB OK')"
-
-# Verificar OpenAI
-python -c "from langchain_openai import ChatOpenAI; print('OpenAI OK')"
-```
-
-#### Logs y Debugging
-```bash
-# Ver logs en tiempo real
-tail -f logs/okuoagent.log
-
-# Limpiar archivos temporales
-rm -rf images/* uploads/*
-
-# Reiniciar aplicación
-pkill -f streamlit && streamlit run run_app.py
-```
-
-### Personalización
-
-#### Agregar Nuevas Métricas
-1. Editar `utils/production_metrics.py`
-2. Agregar función de cálculo
-3. Actualizar `core/graph/tools.py`
-4. Documentar en `data/metadata/`
-
-#### Modificar Prompts
-1. Editar `core/prompts/main_prompt.md`
-2. Ajustar instrucciones específicas
-3. Probar con consultas de ejemplo
-
-
+### **Próximas Mejoras:**
+- [ ] Exportación a Excel
+- [ ] Más tipos de gráficos
+- [ ] Alertas automáticas
+- [ ] Dashboard ejecutivo
 
 ## 🔒 Seguridad y Privacidad
 
-### Protecciones Implementadas
-- **Validación de Entrada**: Sanitización de consultas
-- **Límites de Memoria**: Prevención de ataques DoS
-- **TTL de Sesiones**: Limpieza automática
-- **Logging Seguro**: Sin datos sensibles en logs
-
-### Mejores Prácticas
-- **API Keys**: Nunca committear en el código
-- **Variables de Entorno**: Usar `.env` para configuración
-- **Backups**: Respaldar configuración y metadata
-- **Updates**: Mantener dependencias actualizadas
+- **Autenticación** de usuarios
+- **Validación** de datos de entrada
+- **Logging** de actividades
+- **Gestión segura** de credenciales
 
 ## 📈 Monitoreo y Performance
 
-### Métricas de Rendimiento
-- **Tiempo de Respuesta**: < 5 segundos promedio
-- **Uso de Memoria**: < 100MB por sesión
-- **Disponibilidad**: 99.9% uptime
-- **Precisión**: > 95% en análisis de datos
+- **Logging centralizado** con niveles configurables
+- **Gestión de sesiones** con TTL
+- **Límites de memoria** por sesión
+- **Limpieza automática** de archivos temporales
 
+## 🤝 Contribución
 
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-### Canales de Ayuda
-- **Issues**: GitHub Issues para bugs
-- **Discussions**: GitHub Discussions para preguntas
-- **Documentación**: Wiki del repositorio
-- **Email**: jdrincone@gmail.com
+## 📞 Soporte
+
+Para soporte técnico o preguntas sobre el proyecto:
+- **Email:** [tu-email@ejemplo.com]
+- **Issues:** [GitHub Issues](https://github.com/jdrincone/OkuoAgent/issues)
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
 ---
 
-**Desarrollado por Juan David Rincón**
+**OkuoAgent v1.3.0** - Transformando datos en insights inteligentes 🚀
 
