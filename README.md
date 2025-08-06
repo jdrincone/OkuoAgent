@@ -166,30 +166,6 @@ OkuoAgent/
 └── run_app.py                 # Punto de entrada
 ```
 
-## 🔄 Desarrollo y Mantenimiento
-
-### **Versiones Disponibles:**
-- **v1.1.0** - Versión inicial con dashboard básico
-- **v1.2.0** - Estabilización y documentación
-- **v1.3.0** - **Informe detallado con colores corporativos e imágenes en PDF**
-
-### **Ramas Activas:**
-- `main` - Rama principal estable
-- `feature/gerencial-reports` - **Nueva funcionalidad de informes detallados**
-
-### **Próximas Mejoras:**
-- [ ] Exportación a Excel
-- [ ] Más tipos de gráficos
-- [ ] Alertas automáticas
-- [ ] Dashboard ejecutivo
-
-## 🔒 Seguridad y Privacidad
-
-- **Autenticación** de usuarios
-- **Validación** de datos de entrada
-- **Logging** de actividades
-- **Gestión segura** de credenciales
-
 ## 📈 Monitoreo y Performance
 
 - **Logging centralizado** con niveles configurables
