@@ -1,5 +1,5 @@
 """
-Página principal del agente de visualización Python - Versión Refactorizada.
+Página principal del agente de visualización Python 
 Utiliza componentes modulares para separar la lógica de presentación.
 """
 
