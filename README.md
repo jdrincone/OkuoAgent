@@ -38,8 +38,7 @@ La versión 1.3.0 introduce un **sistema completo de informes detallados** con l
 
 2. **Backend (LangGraph)**
    - Agente conversacional especializado
-   - **Nuevo agente para informes detallados**
-   - Procesamiento de datos en tiempo real
+   - Procesamiento de datos en streaming
    - Generación de visualizaciones
 
 3. **Servicios de Datos**
@@ -57,7 +56,7 @@ La versión 1.3.0 introduce un **sistema completo de informes detallados** con l
 ## 🚀 Instalación y Configuración
 
 ### **Requisitos del Sistema:**
-- Python 3.8+
+- Python 3.12+
 - PostgreSQL
 - **Kaleido** (para generación de imágenes en PDF)
 
@@ -71,8 +70,7 @@ cd OkuoAgent
 pip install -r requirements.txt
 
 # Configurar variables de entorno
-cp env.example .env
-# Editar .env con tus credenciales
+ .env
 
 # Ejecutar la aplicación
 streamlit run run_app.py
@@ -99,7 +97,6 @@ streamlit run run_app.py
 - ✅ **Análisis de producción** con gráfico de tendencias
 - ✅ **Análisis de calidad** con métricas por producto
 - ✅ **Comparaciones temporales** detalladas
-- ✅ **Recomendaciones** accionables
 
 ## 📊 Datos y Métricas Disponibles
 
@@ -145,7 +142,7 @@ OkuoAgent/
 ├── core/                          # Lógica principal del agente
 │   ├── prompts/
 │   │   ├── main_prompt.md        # Prompt principal del agente
-│   │   └── detailed_report_prompt.md  # Prompt para informes detallados
+│   │   └── aqui_va_otros.md  
 │   └── graph/                    # Nodos de LangGraph
 ├── services/                     # Servicios de negocio
 │   ├── database_service.py      # Conexión a base de datos
@@ -199,26 +196,6 @@ OkuoAgent/
 - **Gestión de sesiones** con TTL
 - **Límites de memoria** por sesión
 - **Limpieza automática** de archivos temporales
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📞 Soporte
-
-Para soporte técnico o preguntas sobre el proyecto:
-- **Email:** [tu-email@ejemplo.com]
-- **Issues:** [GitHub Issues](https://github.com/jdrincone/OkuoAgent/issues)
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
----
 
 **OkuoAgent v1.3.0** - Transformando datos en insights inteligentes 🚀
 

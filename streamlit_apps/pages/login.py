@@ -94,7 +94,7 @@ def check_login():
         "Contraseña", 
         type="password", 
         placeholder="Ingrese su contraseña",
-        help="Contraseña por defecto: admin123"
+        help="Contraseña por defecto: Pregunar a JuanDa"
     )
     
     # Login button

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Entry point for OkuoAgent Streamlit application
-This script handles the proper import paths for the reorganized project structure
+Entry point to Okuo Agent Streamlit application
 """
 
 import sys
